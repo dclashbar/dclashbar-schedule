@@ -1,7 +1,7 @@
 // Renders the intake form HTML
 const LOGO_URL = 'https://images.squarespace-cdn.com/content/v1/572ba1b72fe13138bc8e1fe9/92764f7d-c61c-4ef2-89f9-f0bf8444215a/Transparent+Logo+%282%29.png';
 
-function renderIntakeForm(staffKey) {
+function renderIntakeForm(staffKey, clientName) {
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -65,7 +65,7 @@ function renderIntakeForm(staffKey) {
       <div class="row">
         <div class="field">
           <label>First name <span class="req">*</span></label>
-          <input type="text" name="firstName" required>
+          <input type="text" name="firstName" value="${clientName || ''}" required>
         </div>
         <div class="field">
           <label>Last name <span class="req">*</span></label>

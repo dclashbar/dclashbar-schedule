@@ -28,6 +28,15 @@ const LOGO_URL = 'https://images.squarespace-cdn.com/content/v1/572ba1b72fe13138
 // Photo storage (in-memory for now, keyed by client name)
 const photoStore = {};
 
+// Check if a client has submitted an intake form
+function hasIntakeForm(customerName) {
+  const intakeDir = path.join(__dirname, 'intakes');
+  if (!fs.existsSync(intakeDir)) return false;
+  const files = fs.readdirSync(intakeDir).filter(f => f.endsWith('.json'));
+  const nameLower = (customerName || '').toLowerCase().replace(/\s+/g, '_');
+  return files.some(f => f.toLowerCase().startsWith(nameLower));
+}
+
 // Status storage (in-memory, keyed by appointment identifier)
 const statusStore = {};
 
@@ -149,7 +158,7 @@ function renderSchedulePage(staffName, appointments, date) {
             ${appt.serviceName || ''}
           </td>
           <td style="padding:12px 15px; border-bottom:1px solid #eee;">
-            ${appt.customerFirstName || appt.customerName || ''}${appt.firstAppointment ? ' <span style="background:#e67e22;color:white;padding:1px 6px;border-radius:8px;font-size:11px;">NEW</span>' : ''}
+            ${appt.customerFirstName || appt.customerName || ''}${appt.firstAppointment ? ' <span style="background:#e67e22;color:white;padding:1px 6px;border-radius:8px;font-size:11px;">NEW</span>' : ''}${!hasIntakeForm(appt.customerName || appt.customerFirstName || '') ? ` <a href="/intake?staff=${staffKey}&client=${encodeURIComponent(appt.customerFirstName || appt.customerName || '')}" style="background:#e74c3c;color:white;padding:1px 6px;border-radius:8px;font-size:11px;text-decoration:none;">NO FORM</a>` : ''}
           </td>
           <td style="padding:12px 15px; border-bottom:1px solid #eee;">
             <div style="max-height:150px; overflow-y:auto; font-size:13px; color:#555; white-space:pre-wrap;">${appt.progressNotes || '<em style="color:#ccc;">No progress notes</em>'}</div>
@@ -541,8 +550,9 @@ const server = http.createServer(async (req, res) => {
     // Intake form
     if (reqPath === '/intake') {
       const staffKey = url.searchParams.get('staff') || '';
+      const clientName = url.searchParams.get('client') || '';
       res.writeHead(200, { 'Content-Type': 'text/html' });
-      res.end(renderIntakeForm(staffKey));
+      res.end(renderIntakeForm(staffKey, clientName));
       return;
     }
 
