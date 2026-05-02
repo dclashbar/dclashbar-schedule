@@ -21,6 +21,7 @@ const STAFF = {
 
 let cachedToken = null;
 let tokenExpiry = 0;
+let sessionTypeCache = {};
 
 function apiRequest(method, path, body) {
   return new Promise((resolve, reject) => {
@@ -66,7 +67,7 @@ async function getToken() {
   });
 
   cachedToken = result.AccessToken;
-  tokenExpiry = new Date(result.Expires).getTime() - 60000; // 1 min buffer
+  tokenExpiry = new Date(result.Expires).getTime() - 60000;
   return cachedToken;
 }
 
@@ -74,6 +75,24 @@ async function getStaffList() {
   await getToken();
   const result = await apiRequest('GET', 'staff/staff?limit=100');
   return result.StaffMembers || [];
+}
+
+async function getSessionTypes() {
+  if (Object.keys(sessionTypeCache).length > 0) return sessionTypeCache;
+  await getToken();
+  const result = await apiRequest('GET', 'site/sessiontypes?limit=200');
+  const types = result.SessionTypes || [];
+  for (const t of types) {
+    sessionTypeCache[t.Id] = t.Name;
+  }
+  return sessionTypeCache;
+}
+
+async function getClientInfo(clientId) {
+  await getToken();
+  const result = await apiRequest('GET', `client/clients?ClientIds=${clientId}`);
+  const clients = result.Clients || [];
+  return clients[0] || null;
 }
 
 async function getAppointments(staffId, date) {
@@ -86,9 +105,54 @@ async function getAppointments(staffId, date) {
     .sort((a, b) => new Date(a.StartDateTime) - new Date(b.StartDateTime));
 }
 
-function formatTime(dateStr) {
+async function updateAppointmentNotes(appointmentId, notes) {
+  await getToken();
+  const result = await apiRequest('POST', 'appointment/addappointment', {
+    AppointmentId: appointmentId,
+    Notes: notes,
+  });
+  return result;
+}
+
+async function enrichAppointments(appointments) {
+  const sessionTypes = await getSessionTypes();
+  const clientCache = {};
+
+  const enriched = [];
+  for (const appt of appointments) {
+    // Get client info
+    let client = clientCache[appt.ClientId];
+    if (!client && appt.ClientId) {
+      try {
+        client = await getClientInfo(appt.ClientId);
+        clientCache[appt.ClientId] = client;
+      } catch (err) {
+        console.error(`Could not fetch client ${appt.ClientId}:`, err.message);
+      }
+    }
+
+    enriched.push({
+      id: appt.Id,
+      startDateTime: appt.StartDateTime,
+      endDateTime: appt.EndDateTime,
+      duration: appt.Duration,
+      serviceName: sessionTypes[appt.SessionTypeId] || appt.OnlineDescription || `Service #${appt.SessionTypeId}`,
+      staffName: appt.Staff ? `${appt.Staff.FirstName} ${appt.Staff.LastName}` : 'Unknown',
+      customerName: client ? `${client.FirstName} ${client.LastName}` : `Client #${appt.ClientId}`,
+      notes: appt.Notes || '',
+      status: appt.Status,
+      firstAppointment: appt.FirstAppointment,
+    });
+  }
+
+  return enriched;
+}
+
+function formatDateTime(dateStr) {
   const d = new Date(dateStr);
-  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  const date = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  return { date, time };
 }
 
 function formatDate(dateStr) {
@@ -103,41 +167,40 @@ function renderSchedulePage(staffName, appointments, date) {
   if (appointments.length === 0) {
     appointmentRows = `
       <tr>
-        <td colspan="4" style="text-align:center; padding:40px; color:#888; font-style:italic;">
+        <td colspan="5" style="text-align:center; padding:40px; color:#888; font-style:italic;">
           No appointments scheduled for today.
         </td>
       </tr>`;
   } else {
     for (const appt of appointments) {
-      const time = formatTime(appt.StartDateTime);
-      const endTime = formatTime(appt.EndDateTime);
-      const duration = appt.Duration + ' min';
-      const clientName = appt.ClientId ? `Client #${appt.ClientId}` : 'Walk-in';
-      const service = appt.OnlineDescription || `Session (${duration})`;
-      const notes = appt.Notes || '';
-      const status = appt.Status || '';
-
-      let statusBadge = '';
-      if (status === 'Confirmed') statusBadge = '<span style="background:#4CAF50;color:white;padding:2px 8px;border-radius:10px;font-size:12px;">Confirmed</span>';
-      else if (status === 'NoShow') statusBadge = '<span style="background:#f44336;color:white;padding:2px 8px;border-radius:10px;font-size:12px;">No Show</span>';
-      else if (status) statusBadge = `<span style="background:#2196F3;color:white;padding:2px 8px;border-radius:10px;font-size:12px;">${status}</span>`;
+      const { date: apptDate, time: apptTime } = formatDateTime(appt.startDateTime);
+      const newBadge = appt.firstAppointment ? ' <span style="background:#e67e22;color:white;padding:1px 6px;border-radius:8px;font-size:11px;">NEW</span>' : '';
 
       appointmentRows += `
         <tr>
           <td style="padding:12px 15px; border-bottom:1px solid #eee; white-space:nowrap;">
-            <strong>${time}</strong><br>
-            <small style="color:#888;">${endTime}</small>
+            <strong>${apptTime}</strong><br>
+            <small style="color:#888;">${apptDate}</small><br>
+            <small style="color:#aaa;">${appt.duration} min</small>
           </td>
           <td style="padding:12px 15px; border-bottom:1px solid #eee;">
-            ${clientName}
+            ${appt.serviceName}
           </td>
           <td style="padding:12px 15px; border-bottom:1px solid #eee;">
-            ${service}<br>
-            <small style="color:#888;">${duration}</small>
+            ${appt.staffName}
           </td>
           <td style="padding:12px 15px; border-bottom:1px solid #eee;">
-            ${statusBadge}
-            ${notes ? `<br><small style="color:#666; margin-top:4px; display:inline-block;">${notes}</small>` : ''}
+            ${appt.customerName}${newBadge}
+          </td>
+          <td style="padding:12px 15px; border-bottom:1px solid #eee;">
+            <div style="max-height:120px; overflow-y:auto; font-size:13px; color:#555; white-space:pre-wrap; margin-bottom:8px;">${appt.notes || '<em style="color:#ccc;">No notes yet</em>'}</div>
+            <form method="POST" action="/add-note" style="display:flex; gap:6px;">
+              <input type="hidden" name="appointmentId" value="${appt.id}">
+              <input type="hidden" name="existingNotes" value="${(appt.notes || '').replace(/"/g, '&quot;')}">
+              <input type="hidden" name="staffKey" value="${Object.entries(STAFF).find(([k, s]) => s.name === staffName)?.[0] || ''}">
+              <textarea name="newNote" placeholder="Add note..." style="flex:1; padding:6px; border:1px solid #ddd; border-radius:4px; font-size:13px; font-family:inherit; resize:vertical; min-height:36px;"></textarea>
+              <button type="submit" style="padding:6px 12px; background:#3498db; color:white; border:none; border-radius:4px; cursor:pointer; font-size:13px; white-space:nowrap;">Add</button>
+            </form>
           </td>
         </tr>`;
     }
@@ -161,15 +224,16 @@ function renderSchedulePage(staffName, appointments, date) {
       background: linear-gradient(135deg, #2c3e50, #3498db);
       color: white;
       padding: 20px 25px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
-    .header h1 { font-size: 24px; font-weight: 600; }
-    .header .date { font-size: 16px; opacity: 0.9; margin-top: 4px; }
-    .header .count {
-      font-size: 14px;
-      opacity: 0.8;
-      margin-top: 8px;
-    }
-    .container { padding: 15px; }
+    .header h1 { font-size: 22px; font-weight: 600; }
+    .header .date { font-size: 14px; opacity: 0.9; margin-top: 4px; }
+    .header .count { font-size: 13px; opacity: 0.8; margin-top: 4px; }
+    .header .back { color: white; text-decoration: none; font-size: 14px; opacity: 0.8; }
+    .header .back:hover { opacity: 1; }
+    .container { padding: 15px; overflow-x: auto; }
     table {
       width: 100%;
       border-collapse: collapse;
@@ -177,6 +241,7 @@ function renderSchedulePage(staffName, appointments, date) {
       border-radius: 8px;
       overflow: hidden;
       box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      min-width: 800px;
     }
     thead th {
       background: #f8f9fa;
@@ -187,6 +252,7 @@ function renderSchedulePage(staffName, appointments, date) {
       text-transform: uppercase;
       color: #666;
       border-bottom: 2px solid #eee;
+      white-space: nowrap;
     }
     .footer {
       text-align: center;
@@ -194,26 +260,33 @@ function renderSchedulePage(staffName, appointments, date) {
       color: #999;
       font-size: 12px;
     }
-    @media (max-width: 768px) {
-      .header h1 { font-size: 20px; }
-      thead th, td { padding: 10px !important; font-size: 14px; }
+    .success-banner {
+      background: #27ae60;
+      color: white;
+      padding: 10px 20px;
+      text-align: center;
+      font-size: 14px;
     }
   </style>
 </head>
 <body>
   <div class="header">
-    <h1>DC Lash Bar - ${staffName}</h1>
-    <div class="date">${today}</div>
-    <div class="count">${appointments.length} appointment${appointments.length !== 1 ? 's' : ''} today</div>
+    <div>
+      <h1>${staffName}</h1>
+      <div class="date">${today}</div>
+      <div class="count">${appointments.length} appointment${appointments.length !== 1 ? 's' : ''} today</div>
+    </div>
+    <a href="/" class="back">All Staff</a>
   </div>
   <div class="container">
     <table>
       <thead>
         <tr>
-          <th>Time</th>
-          <th>Client</th>
-          <th>Service</th>
-          <th>Status / Notes</th>
+          <th>Appointment On</th>
+          <th>Service Name</th>
+          <th>Staff Name</th>
+          <th>Customer Name</th>
+          <th style="min-width:250px;">Customer Progress Notes</th>
         </tr>
       </thead>
       <tbody>
@@ -271,23 +344,6 @@ function renderHomePage() {
   </div>
 </body>
 </html>`;
-}
-
-async function initStaffIds() {
-  try {
-    const staffList = await getStaffList();
-    for (const member of staffList) {
-      const fullName = `${member.FirstName} ${member.LastName}`;
-      for (const [key, staff] of Object.entries(STAFF)) {
-        if (staff.name === fullName) {
-          staff.id = member.Id;
-          console.log(`  Found staff: ${fullName} (ID: ${member.Id})`);
-        }
-      }
-    }
-  } catch (err) {
-    console.error('Could not load staff IDs:', err.message);
-  }
 }
 
 function renderLoginPage(error) {
@@ -375,11 +431,28 @@ function parseBody(req) {
       const params = {};
       body.split('&').forEach(pair => {
         const [key, val] = pair.split('=');
-        if (key) params[decodeURIComponent(key)] = decodeURIComponent(val || '');
+        if (key) params[decodeURIComponent(key)] = decodeURIComponent((val || '').replace(/\+/g, ' '));
       });
       resolve(params);
     });
   });
+}
+
+async function initStaffIds() {
+  try {
+    const staffList = await getStaffList();
+    for (const member of staffList) {
+      const fullName = `${member.FirstName} ${member.LastName}`;
+      for (const [key, staff] of Object.entries(STAFF)) {
+        if (staff.name === fullName) {
+          staff.id = member.Id;
+          console.log(`  Found staff: ${fullName} (ID: ${member.Id})`);
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Could not load staff IDs:', err.message);
+  }
 }
 
 const server = http.createServer(async (req, res) => {
@@ -400,6 +473,43 @@ const server = http.createServer(async (req, res) => {
         res.writeHead(200, { 'Content-Type': 'text/html' });
         res.end(renderLoginPage(true));
       }
+      return;
+    }
+
+    // Handle add note
+    if (reqPath === '/add-note' && req.method === 'POST') {
+      if (!isAuthenticated(req)) {
+        res.writeHead(302, { 'Location': '/' });
+        res.end();
+        return;
+      }
+
+      const body = await parseBody(req);
+      const appointmentId = parseInt(body.appointmentId);
+      const existingNotes = body.existingNotes || '';
+      const newNote = body.newNote || '';
+      const staffKey = body.staffKey || '';
+
+      if (newNote.trim()) {
+        const today = new Date().toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit' });
+        const updatedNotes = existingNotes
+          ? `${existingNotes}\n${today} ${newNote.trim()}`
+          : `${today} ${newNote.trim()}`;
+
+        try {
+          await getToken();
+          await apiRequest('POST', 'appointment/addappointmentnotes', {
+            AppointmentId: appointmentId,
+            Notes: updatedNotes,
+          });
+          console.log(`Note added to appointment ${appointmentId}`);
+        } catch (err) {
+          console.error(`Failed to add note: ${err.message}`);
+        }
+      }
+
+      res.writeHead(302, { 'Location': `/${staffKey}` });
+      res.end();
       return;
     }
 
@@ -426,7 +536,8 @@ const server = http.createServer(async (req, res) => {
     }
 
     const today = new Date().toISOString().split('T')[0];
-    const appointments = await getAppointments(staff.id, today);
+    const rawAppointments = await getAppointments(staff.id, today);
+    const appointments = await enrichAppointments(rawAppointments);
 
     res.writeHead(200, { 'Content-Type': 'text/html' });
     res.end(renderSchedulePage(staff.name, appointments, today));
@@ -441,6 +552,7 @@ async function start() {
   console.log('DC Lash Bar - Artist Schedule Server\n');
   console.log('Loading staff IDs...');
   await initStaffIds();
+  await getSessionTypes();
 
   server.listen(CONFIG.port, () => {
     console.log(`\nServer running at http://localhost:${CONFIG.port}`);
@@ -448,7 +560,6 @@ async function start() {
     for (const [key, staff] of Object.entries(STAFF)) {
       console.log(`  ${staff.name}: http://localhost:${CONFIG.port}/${key}`);
     }
-    console.log('\nPress Ctrl+C to stop.');
   });
 }
 
