@@ -273,6 +273,7 @@ function renderSchedulePage(staffName, appointments, date) {
 <body>
   <div class="header">
     <div>
+      <img src="https://images.squarespace-cdn.com/content/v1/572ba1b72fe13138bc8e1fe9/92764f7d-c61c-4ef2-89f9-f0bf8444215a/Transparent+Logo+%282%29.png" alt="DC Lash Bar" style="height:35px; margin-bottom:6px; filter:brightness(0) invert(1);">
       <h1>${staffName}</h1>
       <div class="date">${today}</div>
       <div class="count">${appointments.length} appointment${appointments.length !== 1 ? 's' : ''} today</div>
@@ -337,7 +338,7 @@ function renderHomePage() {
 </head>
 <body>
   <div class="header">
-    <h1>DC Lash Bar</h1>
+    <img src="https://images.squarespace-cdn.com/content/v1/572ba1b72fe13138bc8e1fe9/92764f7d-c61c-4ef2-89f9-f0bf8444215a/Transparent+Logo+%282%29.png" alt="DC Lash Bar" style="height:60px; margin-bottom:10px; filter:brightness(0) invert(1);">
     <p>Select your name to view today's schedule</p>
   </div>
   <div class="container">
@@ -398,7 +399,7 @@ function renderLoginPage(error) {
 </head>
 <body>
   <div class="login-box">
-    <h1>DC Lash Bar</h1>
+    <img src="https://images.squarespace-cdn.com/content/v1/572ba1b72fe13138bc8e1fe9/92764f7d-c61c-4ef2-89f9-f0bf8444215a/Transparent+Logo+%282%29.png" alt="DC Lash Bar" style="height:50px; margin-bottom:10px;">
     <p>Enter access code to view schedules</p>
     ${error ? '<div class="error">Incorrect code. Try again.</div>' : ''}
     <form method="POST" action="/login">
