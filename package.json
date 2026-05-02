@@ -1,0 +1,12 @@
+{
+  "name": "dclashbar-schedule",
+  "version": "1.0.0",
+  "description": "DC Lash Bar daily artist schedules",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
