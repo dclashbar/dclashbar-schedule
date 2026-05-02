@@ -232,6 +232,7 @@ function renderSchedulePage(staffName, appointments, date) {
     <a href="/" class="back">All Staff</a>
   </div>
   <div class="container">
+    ${renderEmailSummary() || '<div style="background:#d4edda; border:1px solid #28a745; border-radius:8px; padding:12px 15px; margin-bottom:15px; color:#155724; font-size:14px;">All overnight messages have been checked and incorporated into today\'s agenda.</div>'}
     <table>
       <thead>
         <tr>
@@ -554,6 +555,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     loadAppointmentsData();
+    loadEmailSummary();
     const appointments = getStaffAppointments(staff.name);
     const date = appointmentsData?.date || new Date().toISOString().split('T')[0];
 
