@@ -137,9 +137,9 @@ async function enrichAppointments(appointments) {
       endDateTime: appt.EndDateTime,
       duration: appt.Duration,
       serviceName: sessionTypes[appt.SessionTypeId] || appt.OnlineDescription || `Service #${appt.SessionTypeId}`,
-      staffName: appt.Staff ? `${appt.Staff.FirstName} ${appt.Staff.LastName}` : 'Unknown',
-      customerName: client ? `${client.FirstName} ${client.LastName}` : `Client #${appt.ClientId}`,
-      notes: appt.Notes || '',
+      customerFirstName: client ? client.FirstName : `Client #${appt.ClientId}`,
+      progressNotes: client ? (client.Notes || '') : '',
+      appointmentNotes: appt.Notes || '',
       status: appt.Status,
       firstAppointment: appt.FirstAppointment,
     });
@@ -175,6 +175,7 @@ function renderSchedulePage(staffName, appointments, date) {
     for (const appt of appointments) {
       const { date: apptDate, time: apptTime } = formatDateTime(appt.startDateTime);
       const newBadge = appt.firstAppointment ? ' <span style="background:#e67e22;color:white;padding:1px 6px;border-radius:8px;font-size:11px;">NEW</span>' : '';
+      const staffKey = Object.entries(STAFF).find(([k, s]) => s.name === staffName)?.[0] || '';
 
       appointmentRows += `
         <tr>
@@ -187,17 +188,17 @@ function renderSchedulePage(staffName, appointments, date) {
             ${appt.serviceName}
           </td>
           <td style="padding:12px 15px; border-bottom:1px solid #eee;">
-            ${appt.staffName}
+            ${appt.customerFirstName}${newBadge}
           </td>
           <td style="padding:12px 15px; border-bottom:1px solid #eee;">
-            ${appt.customerName}${newBadge}
+            <div style="max-height:150px; overflow-y:auto; font-size:13px; color:#555; white-space:pre-wrap;">${appt.progressNotes || '<em style="color:#ccc;">No progress notes</em>'}</div>
           </td>
           <td style="padding:12px 15px; border-bottom:1px solid #eee;">
-            <div style="max-height:120px; overflow-y:auto; font-size:13px; color:#555; white-space:pre-wrap; margin-bottom:8px;">${appt.notes || '<em style="color:#ccc;">No notes yet</em>'}</div>
+            <div style="max-height:80px; overflow-y:auto; font-size:13px; color:#555; white-space:pre-wrap; margin-bottom:8px;">${appt.appointmentNotes || '<em style="color:#ccc;">No notes</em>'}</div>
             <form method="POST" action="/add-note" style="display:flex; gap:6px;">
               <input type="hidden" name="appointmentId" value="${appt.id}">
-              <input type="hidden" name="existingNotes" value="${(appt.notes || '').replace(/"/g, '&quot;')}">
-              <input type="hidden" name="staffKey" value="${Object.entries(STAFF).find(([k, s]) => s.name === staffName)?.[0] || ''}">
+              <input type="hidden" name="existingNotes" value="${(appt.appointmentNotes || '').replace(/"/g, '&quot;')}">
+              <input type="hidden" name="staffKey" value="${staffKey}">
               <textarea name="newNote" placeholder="Add note..." style="flex:1; padding:6px; border:1px solid #ddd; border-radius:4px; font-size:13px; font-family:inherit; resize:vertical; min-height:36px;"></textarea>
               <button type="submit" style="padding:6px 12px; background:#3498db; color:white; border:none; border-radius:4px; cursor:pointer; font-size:13px; white-space:nowrap;">Add</button>
             </form>
@@ -284,9 +285,9 @@ function renderSchedulePage(staffName, appointments, date) {
         <tr>
           <th>Appointment On</th>
           <th>Service Name</th>
-          <th>Staff Name</th>
-          <th>Customer Name</th>
-          <th style="min-width:250px;">Customer Progress Notes</th>
+          <th>Customer</th>
+          <th style="min-width:200px;">Customer Progress Notes</th>
+          <th style="min-width:250px;">Notes</th>
         </tr>
       </thead>
       <tbody>
