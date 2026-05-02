@@ -3,6 +3,7 @@ const https = require('https');
 const fs = require('fs');
 const path = require('path');
 const { google } = require('googleapis');
+const { renderIntakeForm } = require('./intake-form');
 
 const CONFIG = {
   port: process.env.PORT || 8080,
@@ -229,7 +230,10 @@ function renderSchedulePage(staffName, appointments, date) {
       <div class="date">${today}</div>
       <div class="count">${appointments.length} appointment${appointments.length !== 1 ? 's' : ''} today</div>
     </div>
-    <a href="/" class="back">All Staff</a>
+    <div style="text-align:right;">
+      <a href="/intake?staff=${Object.entries(STAFF).find(([k, s]) => s.name === staffName)?.[0] || ''}" style="display:inline-block; padding:8px 16px; background:white; color:#2c3e50; border-radius:6px; text-decoration:none; font-size:14px; font-weight:600; margin-bottom:8px;">+ New Client Intake</a><br>
+      <a href="/" class="back">All Staff</a>
+    </div>
   </div>
   <div class="container">
     ${renderEmailSummary() || '<div style="background:#d4edda; border:1px solid #28a745; border-radius:8px; padding:12px 15px; margin-bottom:15px; color:#155724; font-size:14px;">All overnight messages have been checked and incorporated into today\'s agenda.</div>'}
@@ -531,6 +535,92 @@ const server = http.createServer(async (req, res) => {
       console.log(`Note added for ${body.customerKey}: ${body.newNote}`);
       res.writeHead(302, { 'Location': `/${staffKey}` });
       res.end();
+      return;
+    }
+
+    // Intake form
+    if (reqPath === '/intake') {
+      const staffKey = url.searchParams.get('staff') || '';
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.end(renderIntakeForm(staffKey));
+      return;
+    }
+
+    // Submit intake form
+    if (reqPath === '/submit-intake' && req.method === 'POST') {
+      const body = await parseFormData(req);
+      const staffKey = body.staffKey || '';
+
+      // Save intake data to file
+      const intakeDir = path.join(__dirname, 'intakes');
+      if (!fs.existsSync(intakeDir)) fs.mkdirSync(intakeDir, { recursive: true });
+
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const filename = `${body.firstName || 'unknown'}_${body.lastName || 'unknown'}_${timestamp}.json`;
+
+      // Extract signature image
+      const signatureData = body.signature || '';
+
+      const intakeData = {
+        submittedAt: new Date().toISOString(),
+        staffKey,
+        personalInfo: {
+          firstName: body.firstName,
+          lastName: body.lastName,
+          phone: body.phone,
+          email: body.email,
+          contactMethod: body.contactMethod,
+          dob: body.dob,
+          emergencyContact: body.emergencyContact,
+        },
+        hearAbout: Array.isArray(body.hearAbout) ? body.hearAbout : (body.hearAbout ? [body.hearAbout] : []),
+        photoPermission: body.photoPermission,
+        services: Array.isArray(body.services) ? body.services : (body.services ? [body.services] : []),
+        medical: Array.isArray(body.medical) ? body.medical : (body.medical ? [body.medical] : []),
+        medicalDate: body.medicalDate,
+        priorReaction: body.priorReaction,
+        reactionDescription: body.reactionDescription,
+        patchTest: Array.isArray(body.patchTest) ? body.patchTest : (body.patchTest ? [body.patchTest] : []),
+        signature: signatureData ? true : false,
+      };
+
+      // Save JSON data
+      fs.writeFileSync(path.join(intakeDir, filename), JSON.stringify(intakeData, null, 2));
+
+      // Save signature image separately
+      if (signatureData && signatureData.startsWith('data:image')) {
+        const base64Data = signatureData.replace(/^data:image\/png;base64,/, '');
+        const sigFilename = filename.replace('.json', '_signature.png');
+        fs.writeFileSync(path.join(intakeDir, sigFilename), Buffer.from(base64Data, 'base64'));
+      }
+
+      console.log(`Intake form submitted: ${body.firstName} ${body.lastName}`);
+
+      // Show success page
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.end(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Thank You - DC Lash Bar</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+    .box { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); text-align: center; max-width: 400px; }
+    h1 { color: #27ae60; font-size: 24px; margin-bottom: 10px; }
+    p { color: #666; margin-bottom: 20px; }
+    a { display: inline-block; padding: 12px 24px; background: linear-gradient(135deg, #2c3e50, #3498db); color: white; text-decoration: none; border-radius: 8px; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h1>Thank You, ${body.firstName}!</h1>
+    <p>Your intake form has been submitted successfully. Your artist will be with you shortly.</p>
+    <a href="/${staffKey}">Back to Schedule</a>
+  </div>
+</body>
+</html>`);
       return;
     }
 
