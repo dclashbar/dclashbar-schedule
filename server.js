@@ -1,17 +1,20 @@
 const http = require('http');
 const https = require('https');
+const fs = require('fs');
+const path = require('path');
+const { google } = require('googleapis');
 
-// Configuration from environment variables
 const CONFIG = {
-  apiKey: process.env.MB_API_KEY || 'ded7781d9127467a955b61d7e1d17f4c',
-  siteId: process.env.MB_SITE_ID || '-99',
-  username: process.env.MB_USERNAME || 'mindbodysandboxsite@gmail.com',
-  password: process.env.MB_PASSWORD || 'Apitest1234',
   port: process.env.PORT || 8080,
   accessCode: process.env.ACCESS_CODE || 'dclash2026',
+  useApi: process.env.USE_API === 'true',
+  apiKey: process.env.MB_API_KEY || '',
+  siteId: process.env.MB_SITE_ID || '-99',
+  username: process.env.MB_USERNAME || '',
+  password: process.env.MB_PASSWORD || '',
+  googleDriveFolder: process.env.GOOGLE_DRIVE_FOLDER || '',
 };
 
-// Staff mapping - update with live staff IDs when going live
 const STAFF = {
   'emily': { name: 'Emily Abramson', id: null },
   'hollyn': { name: 'Hollyn Wooldridge', id: null },
@@ -19,15 +22,41 @@ const STAFF = {
   'hiba': { name: 'Hiba Fadel', id: null },
 };
 
+const LOGO_URL = 'https://images.squarespace-cdn.com/content/v1/572ba1b72fe13138bc8e1fe9/92764f7d-c61c-4ef2-89f9-f0bf8444215a/Transparent+Logo+%282%29.png';
+
+// Photo storage (in-memory for now, keyed by client name)
+const photoStore = {};
+
+// --- Data Source ---
+let appointmentsData = null;
+
+function loadAppointmentsData() {
+  const dataFile = path.join(__dirname, 'appointments-data.json');
+  if (fs.existsSync(dataFile)) {
+    try {
+      appointmentsData = JSON.parse(fs.readFileSync(dataFile, 'utf-8'));
+      console.log(`Loaded appointments data from ${appointmentsData.date}`);
+    } catch (err) {
+      console.error('Failed to load appointments data:', err.message);
+    }
+  }
+}
+
+function getStaffAppointments(staffName) {
+  if (!appointmentsData || !appointmentsData.staff) return [];
+  return appointmentsData.staff[staffName] || [];
+}
+
+// --- API functions (for when live API is available) ---
 let cachedToken = null;
 let tokenExpiry = 0;
 let sessionTypeCache = {};
 
-function apiRequest(method, path, body) {
+function apiRequest(method, apiPath, body) {
   return new Promise((resolve, reject) => {
     const options = {
       hostname: 'api.mindbodyonline.com',
-      path: `/public/v6/${path}`,
+      path: `/public/v6/${apiPath}`,
       method,
       headers: {
         'Content-Type': 'application/json',
@@ -35,23 +64,16 @@ function apiRequest(method, path, body) {
         'SiteId': CONFIG.siteId,
       },
     };
-
-    if (cachedToken) {
-      options.headers['Authorization'] = `Bearer ${cachedToken}`;
-    }
+    if (cachedToken) options.headers['Authorization'] = `Bearer ${cachedToken}`;
 
     const req = https.request(options, (res) => {
       let data = '';
       res.on('data', chunk => data += chunk);
       res.on('end', () => {
-        try {
-          resolve(JSON.parse(data));
-        } catch {
-          reject(new Error(`Invalid JSON: ${data.substring(0, 200)}`));
-        }
+        try { resolve(JSON.parse(data)); }
+        catch { reject(new Error(`Invalid JSON`)); }
       });
     });
-
     req.on('error', reject);
     if (body) req.write(JSON.stringify(body));
     req.end();
@@ -60,100 +82,13 @@ function apiRequest(method, path, body) {
 
 async function getToken() {
   if (cachedToken && Date.now() < tokenExpiry) return cachedToken;
-
-  const result = await apiRequest('POST', 'usertoken/issue', {
-    Username: CONFIG.username,
-    Password: CONFIG.password,
-  });
-
+  const result = await apiRequest('POST', 'usertoken/issue', { Username: CONFIG.username, Password: CONFIG.password });
   cachedToken = result.AccessToken;
   tokenExpiry = new Date(result.Expires).getTime() - 60000;
   return cachedToken;
 }
 
-async function getStaffList() {
-  await getToken();
-  const result = await apiRequest('GET', 'staff/staff?limit=100');
-  return result.StaffMembers || [];
-}
-
-async function getSessionTypes() {
-  if (Object.keys(sessionTypeCache).length > 0) return sessionTypeCache;
-  await getToken();
-  const result = await apiRequest('GET', 'site/sessiontypes?limit=200');
-  const types = result.SessionTypes || [];
-  for (const t of types) {
-    sessionTypeCache[t.Id] = t.Name;
-  }
-  return sessionTypeCache;
-}
-
-async function getClientInfo(clientId) {
-  await getToken();
-  const result = await apiRequest('GET', `client/clients?ClientIds=${clientId}`);
-  const clients = result.Clients || [];
-  return clients[0] || null;
-}
-
-async function getAppointments(staffId, date) {
-  await getToken();
-  let path = `appointment/staffappointments?startDate=${date}&endDate=${date}`;
-  if (staffId) path += `&staffIds=${staffId}`;
-  const result = await apiRequest('GET', path);
-  return (result.Appointments || [])
-    .filter(a => a.Status !== 'Cancelled')
-    .sort((a, b) => new Date(a.StartDateTime) - new Date(b.StartDateTime));
-}
-
-async function updateAppointmentNotes(appointmentId, notes) {
-  await getToken();
-  const result = await apiRequest('POST', 'appointment/addappointment', {
-    AppointmentId: appointmentId,
-    Notes: notes,
-  });
-  return result;
-}
-
-async function enrichAppointments(appointments) {
-  const sessionTypes = await getSessionTypes();
-  const clientCache = {};
-
-  const enriched = [];
-  for (const appt of appointments) {
-    // Get client info
-    let client = clientCache[appt.ClientId];
-    if (!client && appt.ClientId) {
-      try {
-        client = await getClientInfo(appt.ClientId);
-        clientCache[appt.ClientId] = client;
-      } catch (err) {
-        console.error(`Could not fetch client ${appt.ClientId}:`, err.message);
-      }
-    }
-
-    enriched.push({
-      id: appt.Id,
-      startDateTime: appt.StartDateTime,
-      endDateTime: appt.EndDateTime,
-      duration: appt.Duration,
-      serviceName: sessionTypes[appt.SessionTypeId] || appt.OnlineDescription || `Service #${appt.SessionTypeId}`,
-      customerFirstName: client ? client.FirstName : `Client #${appt.ClientId}`,
-      progressNotes: client ? (client.Notes || '') : '',
-      appointmentNotes: appt.Notes || '',
-      status: appt.Status,
-      firstAppointment: appt.FirstAppointment,
-    });
-  }
-
-  return enriched;
-}
-
-function formatDateTime(dateStr) {
-  const d = new Date(dateStr);
-  const date = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-  return { date, time };
-}
+// --- HTML Rendering ---
 
 function formatDate(dateStr) {
   const d = new Date(dateStr);
@@ -172,36 +107,70 @@ function renderSchedulePage(staffName, appointments, date) {
         </td>
       </tr>`;
   } else {
+    const staffKey = Object.entries(STAFF).find(([k, s]) => s.name === staffName)?.[0] || '';
+
     for (const appt of appointments) {
-      const { date: apptDate, time: apptTime } = formatDateTime(appt.startDateTime);
-      const newBadge = appt.firstAppointment ? ' <span style="background:#e67e22;color:white;padding:1px 6px;border-radius:8px;font-size:11px;">NEW</span>' : '';
-      const staffKey = Object.entries(STAFF).find(([k, s]) => s.name === staffName)?.[0] || '';
+      const customerKey = (appt.customerFirstName || appt.customerName || '').toLowerCase().replace(/\s+/g, '_');
+      const photos = photoStore[customerKey] || {};
+      const beforeImg = photos.before ? `<img src="/photos/${customerKey}/before" style="max-width:120px; max-height:90px; border-radius:4px;">` : '<span style="color:#ccc; font-size:12px;">No photo</span>';
+      const afterImg = photos.after ? `<img src="/photos/${customerKey}/after" style="max-width:120px; max-height:90px; border-radius:4px;">` : '<span style="color:#ccc; font-size:12px;">No photo</span>';
 
       appointmentRows += `
         <tr>
           <td style="padding:12px 15px; border-bottom:1px solid #eee; white-space:nowrap;">
-            <strong>${apptTime}</strong><br>
-            <small style="color:#888;">${apptDate}</small><br>
-            <small style="color:#aaa;">${appt.duration} min</small>
+            <strong>${appt.appointmentOn || ''}</strong>
           </td>
           <td style="padding:12px 15px; border-bottom:1px solid #eee;">
-            ${appt.serviceName}
+            ${appt.serviceName || ''}
           </td>
           <td style="padding:12px 15px; border-bottom:1px solid #eee;">
-            ${appt.customerFirstName}${newBadge}
+            ${appt.customerFirstName || appt.customerName || ''}${appt.firstAppointment ? ' <span style="background:#e67e22;color:white;padding:1px 6px;border-radius:8px;font-size:11px;">NEW</span>' : ''}
           </td>
           <td style="padding:12px 15px; border-bottom:1px solid #eee;">
             <div style="max-height:150px; overflow-y:auto; font-size:13px; color:#555; white-space:pre-wrap;">${appt.progressNotes || '<em style="color:#ccc;">No progress notes</em>'}</div>
           </td>
           <td style="padding:12px 15px; border-bottom:1px solid #eee;">
-            <div style="max-height:80px; overflow-y:auto; font-size:13px; color:#555; white-space:pre-wrap; margin-bottom:8px;">${appt.appointmentNotes || '<em style="color:#ccc;">No notes</em>'}</div>
+            <div style="max-height:80px; overflow-y:auto; font-size:13px; color:#555; white-space:pre-wrap; margin-bottom:8px;">${appt.appointmentNotes || appt.notes || '<em style="color:#ccc;">No notes</em>'}</div>
             <form method="POST" action="/add-note" style="display:flex; gap:6px;">
-              <input type="hidden" name="appointmentId" value="${appt.id}">
-              <input type="hidden" name="existingNotes" value="${(appt.appointmentNotes || '').replace(/"/g, '&quot;')}">
               <input type="hidden" name="staffKey" value="${staffKey}">
+              <input type="hidden" name="customerKey" value="${customerKey}">
               <textarea name="newNote" placeholder="Add note..." style="flex:1; padding:6px; border:1px solid #ddd; border-radius:4px; font-size:13px; font-family:inherit; resize:vertical; min-height:36px;"></textarea>
               <button type="submit" style="padding:6px 12px; background:#3498db; color:white; border:none; border-radius:4px; cursor:pointer; font-size:13px; white-space:nowrap;">Add</button>
             </form>
+          </td>
+        </tr>
+        <tr>
+          <td colspan="5" style="padding:8px 15px 16px; border-bottom:2px solid #ddd; background:#fafafa;">
+            <div style="display:flex; gap:20px; align-items:flex-start;">
+              <div style="text-align:center;">
+                <div style="font-size:12px; font-weight:600; color:#666; margin-bottom:4px;">BEFORE</div>
+                ${beforeImg}
+                <form method="POST" action="/upload-photo" enctype="multipart/form-data" style="margin-top:6px;">
+                  <input type="hidden" name="customerKey" value="${customerKey}">
+                  <input type="hidden" name="type" value="before">
+                  <input type="hidden" name="staffKey" value="${staffKey}">
+                  <input type="hidden" name="customerName" value="${appt.customerFirstName || appt.customerName || ''}">
+                  <label style="padding:4px 10px; background:#95a5a6; color:white; border-radius:4px; cursor:pointer; font-size:12px;">
+                    Upload
+                    <input type="file" name="photo" accept="image/*" capture="environment" onchange="this.form.submit()" style="display:none;">
+                  </label>
+                </form>
+              </div>
+              <div style="text-align:center;">
+                <div style="font-size:12px; font-weight:600; color:#666; margin-bottom:4px;">AFTER</div>
+                ${afterImg}
+                <form method="POST" action="/upload-photo" enctype="multipart/form-data" style="margin-top:6px;">
+                  <input type="hidden" name="customerKey" value="${customerKey}">
+                  <input type="hidden" name="type" value="after">
+                  <input type="hidden" name="staffKey" value="${staffKey}">
+                  <input type="hidden" name="customerName" value="${appt.customerFirstName || appt.customerName || ''}">
+                  <label style="padding:4px 10px; background:#95a5a6; color:white; border-radius:4px; cursor:pointer; font-size:12px;">
+                    Upload
+                    <input type="file" name="photo" accept="image/*" capture="environment" onchange="this.form.submit()" style="display:none;">
+                  </label>
+                </form>
+              </div>
+            </div>
           </td>
         </tr>`;
     }
@@ -216,64 +185,22 @@ function renderSchedulePage(staffName, appointments, date) {
   <title>${staffName} - Today's Schedule</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #f5f5f5;
-      color: #333;
-    }
-    .header {
-      background: linear-gradient(135deg, #2c3e50, #3498db);
-      color: white;
-      padding: 20px 25px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; color: #333; }
+    .header { background: linear-gradient(135deg, #2c3e50, #3498db); color: white; padding: 20px 25px; display: flex; justify-content: space-between; align-items: center; }
     .header h1 { font-size: 22px; font-weight: 600; }
     .header .date { font-size: 14px; opacity: 0.9; margin-top: 4px; }
     .header .count { font-size: 13px; opacity: 0.8; margin-top: 4px; }
     .header .back { color: white; text-decoration: none; font-size: 14px; opacity: 0.8; }
-    .header .back:hover { opacity: 1; }
     .container { padding: 15px; overflow-x: auto; }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: white;
-      border-radius: 8px;
-      overflow: hidden;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-      min-width: 800px;
-    }
-    thead th {
-      background: #f8f9fa;
-      padding: 12px 15px;
-      text-align: left;
-      font-weight: 600;
-      font-size: 13px;
-      text-transform: uppercase;
-      color: #666;
-      border-bottom: 2px solid #eee;
-      white-space: nowrap;
-    }
-    .footer {
-      text-align: center;
-      padding: 15px;
-      color: #999;
-      font-size: 12px;
-    }
-    .success-banner {
-      background: #27ae60;
-      color: white;
-      padding: 10px 20px;
-      text-align: center;
-      font-size: 14px;
-    }
+    table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); min-width: 800px; }
+    thead th { background: #f8f9fa; padding: 12px 15px; text-align: left; font-weight: 600; font-size: 13px; text-transform: uppercase; color: #666; border-bottom: 2px solid #eee; white-space: nowrap; }
+    .footer { text-align: center; padding: 15px; color: #999; font-size: 12px; }
   </style>
 </head>
 <body>
   <div class="header">
     <div>
-      <img src="https://images.squarespace-cdn.com/content/v1/572ba1b72fe13138bc8e1fe9/92764f7d-c61c-4ef2-89f9-f0bf8444215a/Transparent+Logo+%282%29.png" alt="DC Lash Bar" style="height:35px; margin-bottom:6px; filter:brightness(0) invert(1);">
+      <img src="${LOGO_URL}" alt="DC Lash Bar" style="height:35px; margin-bottom:6px; filter:brightness(0) invert(1);">
       <h1>${staffName}</h1>
       <div class="date">${today}</div>
       <div class="count">${appointments.length} appointment${appointments.length !== 1 ? 's' : ''} today</div>
@@ -306,43 +233,41 @@ function renderSchedulePage(staffName, appointments, date) {
 function renderHomePage() {
   let staffLinks = '';
   for (const [key, staff] of Object.entries(STAFF)) {
+    const appointments = getStaffAppointments(staff.name);
+    const count = appointments.length;
     staffLinks += `
-      <a href="/${key}" style="display:block; padding:20px; margin:10px 0; background:white; border-radius:8px; text-decoration:none; color:#333; box-shadow:0 1px 3px rgba(0,0,0,0.1); font-size:18px;">
-        ${staff.name}
+      <a href="/${key}" style="display:flex; justify-content:space-between; align-items:center; padding:20px; margin:10px 0; background:white; border-radius:8px; text-decoration:none; color:#333; box-shadow:0 1px 3px rgba(0,0,0,0.1); font-size:18px;">
+        <span>${staff.name}</span>
+        <span style="background:#3498db; color:white; padding:4px 12px; border-radius:12px; font-size:14px;">${count}</span>
       </a>`;
   }
+
+  const dataDate = appointmentsData ? appointmentsData.date : 'No data loaded';
 
   return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="refresh" content="300">
   <title>DC Lash Bar - Daily Schedules</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #f5f5f5;
-      color: #333;
-    }
-    .header {
-      background: linear-gradient(135deg, #2c3e50, #3498db);
-      color: white;
-      padding: 25px;
-      text-align: center;
-    }
-    .header h1 { font-size: 28px; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; color: #333; }
+    .header { background: linear-gradient(135deg, #2c3e50, #3498db); color: white; padding: 25px; text-align: center; }
     .header p { margin-top: 8px; opacity: 0.9; }
     .container { padding: 20px; max-width: 500px; margin: 0 auto; }
+    .data-info { text-align: center; color: #999; font-size: 12px; margin-top: 15px; }
   </style>
 </head>
 <body>
   <div class="header">
-    <img src="https://images.squarespace-cdn.com/content/v1/572ba1b72fe13138bc8e1fe9/92764f7d-c61c-4ef2-89f9-f0bf8444215a/Transparent+Logo+%282%29.png" alt="DC Lash Bar" style="height:60px; margin-bottom:10px; filter:brightness(0) invert(1);">
+    <img src="${LOGO_URL}" alt="DC Lash Bar" style="height:60px; margin-bottom:10px; filter:brightness(0) invert(1);">
     <p>Select your name to view today's schedule</p>
   </div>
   <div class="container">
     ${staffLinks}
+    <div class="data-info">Schedule data: ${dataDate}</div>
   </div>
 </body>
 </html>`;
@@ -357,49 +282,18 @@ function renderLoginPage(error) {
   <title>DC Lash Bar - Staff Login</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #f5f5f5;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-    }
-    .login-box {
-      background: white;
-      padding: 40px;
-      border-radius: 12px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-      width: 90%;
-      max-width: 400px;
-      text-align: center;
-    }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+    .login-box { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); width: 90%; max-width: 400px; text-align: center; }
     h1 { font-size: 24px; margin-bottom: 8px; color: #2c3e50; }
     p { color: #888; margin-bottom: 24px; }
-    input {
-      width: 100%;
-      padding: 14px;
-      font-size: 16px;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      margin-bottom: 16px;
-    }
-    button {
-      width: 100%;
-      padding: 14px;
-      font-size: 16px;
-      background: linear-gradient(135deg, #2c3e50, #3498db);
-      color: white;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-    }
+    input { width: 100%; padding: 14px; font-size: 16px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 16px; }
+    button { width: 100%; padding: 14px; font-size: 16px; background: linear-gradient(135deg, #2c3e50, #3498db); color: white; border: none; border-radius: 8px; cursor: pointer; }
     .error { color: #e74c3c; margin-bottom: 16px; }
   </style>
 </head>
 <body>
   <div class="login-box">
-    <img src="https://images.squarespace-cdn.com/content/v1/572ba1b72fe13138bc8e1fe9/92764f7d-c61c-4ef2-89f9-f0bf8444215a/Transparent+Logo+%282%29.png" alt="DC Lash Bar" style="height:50px; margin-bottom:10px;">
+    <img src="${LOGO_URL}" alt="DC Lash Bar" style="height:50px; margin-bottom:10px;">
     <p>Enter access code to view schedules</p>
     ${error ? '<div class="error">Incorrect code. Try again.</div>' : ''}
     <form method="POST" action="/login">
@@ -411,6 +305,8 @@ function renderLoginPage(error) {
 </html>`;
 }
 
+// --- Utilities ---
+
 function parseCookies(req) {
   const cookies = {};
   (req.headers.cookie || '').split(';').forEach(c => {
@@ -421,93 +317,128 @@ function parseCookies(req) {
 }
 
 function isAuthenticated(req) {
-  const cookies = parseCookies(req);
-  return cookies.access === CONFIG.accessCode;
+  return parseCookies(req).access === CONFIG.accessCode;
 }
 
-function parseBody(req) {
+function parseFormData(req) {
   return new Promise((resolve) => {
-    let body = '';
-    req.on('data', chunk => body += chunk);
-    req.on('end', () => {
-      const params = {};
-      body.split('&').forEach(pair => {
-        const [key, val] = pair.split('=');
-        if (key) params[decodeURIComponent(key)] = decodeURIComponent((val || '').replace(/\+/g, ' '));
+    const contentType = req.headers['content-type'] || '';
+
+    if (contentType.includes('multipart/form-data')) {
+      const boundary = contentType.split('boundary=')[1];
+      let body = Buffer.alloc(0);
+      req.on('data', chunk => { body = Buffer.concat([body, chunk]); });
+      req.on('end', () => {
+        const parts = {};
+        const bodyStr = body.toString('latin1');
+        const sections = bodyStr.split('--' + boundary);
+
+        for (const section of sections) {
+          const nameMatch = section.match(/name="([^"]+)"/);
+          if (!nameMatch) continue;
+          const name = nameMatch[0].match(/name="([^"]+)"/)[1];
+
+          const filenameMatch = section.match(/filename="([^"]+)"/);
+          if (filenameMatch) {
+            const headerEnd = section.indexOf('\r\n\r\n');
+            const dataStart = headerEnd + 4;
+            const dataEnd = section.lastIndexOf('\r\n');
+            const fileData = body.slice(
+              bodyStr.indexOf(section.substring(dataStart, dataStart + 20), bodyStr.indexOf(nameMatch[0])) - 0,
+              bodyStr.indexOf(section.substring(dataStart, dataStart + 20), bodyStr.indexOf(nameMatch[0])) + (dataEnd - dataStart)
+            );
+            // Simpler: just get the raw bytes between header and end
+            const fullSectionStart = body.indexOf(Buffer.from(nameMatch[0]));
+            const rawHeaderEnd = body.indexOf(Buffer.from('\r\n\r\n'), fullSectionStart) + 4;
+            const rawDataEnd = body.indexOf(Buffer.from('\r\n--' + boundary), rawHeaderEnd);
+            parts[name] = {
+              filename: filenameMatch[1],
+              data: body.slice(rawHeaderEnd, rawDataEnd),
+            };
+          } else {
+            const headerEnd = section.indexOf('\r\n\r\n');
+            if (headerEnd > -1) {
+              const value = section.substring(headerEnd + 4).replace(/\r\n$/, '');
+              parts[name] = value;
+            }
+          }
+        }
+        resolve(parts);
       });
-      resolve(params);
-    });
+    } else {
+      let body = '';
+      req.on('data', chunk => body += chunk);
+      req.on('end', () => {
+        const params = {};
+        body.split('&').forEach(pair => {
+          const [key, val] = pair.split('=');
+          if (key) params[decodeURIComponent(key)] = decodeURIComponent((val || '').replace(/\+/g, ' '));
+        });
+        resolve(params);
+      });
+    }
   });
 }
 
-async function initStaffIds() {
-  try {
-    const staffList = await getStaffList();
-    for (const member of staffList) {
-      const fullName = `${member.FirstName} ${member.LastName}`;
-      for (const [key, staff] of Object.entries(STAFF)) {
-        if (staff.name === fullName) {
-          staff.id = member.Id;
-          console.log(`  Found staff: ${fullName} (ID: ${member.Id})`);
-        }
-      }
-    }
-  } catch (err) {
-    console.error('Could not load staff IDs:', err.message);
-  }
-}
+// --- Server ---
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${CONFIG.port}`);
   const reqPath = url.pathname.replace(/\/$/, '') || '/';
 
   try {
-    // Handle login
+    // Login
     if (reqPath === '/login' && req.method === 'POST') {
-      const body = await parseBody(req);
+      const body = await parseFormData(req);
       if (body.code === CONFIG.accessCode) {
         res.writeHead(302, {
           'Set-Cookie': `access=${CONFIG.accessCode}; Path=/; Max-Age=31536000; SameSite=Strict`,
           'Location': '/',
         });
-        res.end();
       } else {
         res.writeHead(200, { 'Content-Type': 'text/html' });
         res.end(renderLoginPage(true));
+        return;
+      }
+      res.end();
+      return;
+    }
+
+    // Serve photos
+    if (reqPath.startsWith('/photos/')) {
+      const parts = reqPath.split('/');
+      const customerKey = parts[2];
+      const type = parts[3]; // before or after
+      const photo = photoStore[customerKey]?.[type];
+      if (photo) {
+        res.writeHead(200, { 'Content-Type': 'image/jpeg' });
+        res.end(photo);
+      } else {
+        res.writeHead(404);
+        res.end();
       }
       return;
     }
 
-    // Handle add note
-    if (reqPath === '/add-note' && req.method === 'POST') {
-      if (!isAuthenticated(req)) {
-        res.writeHead(302, { 'Location': '/' });
-        res.end();
-        return;
-      }
+    // Auth check
+    if (!isAuthenticated(req)) {
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.end(renderLoginPage(false));
+      return;
+    }
 
-      const body = await parseBody(req);
-      const appointmentId = parseInt(body.appointmentId);
-      const existingNotes = body.existingNotes || '';
-      const newNote = body.newNote || '';
-      const staffKey = body.staffKey || '';
+    // Upload photo
+    if (reqPath === '/upload-photo' && req.method === 'POST') {
+      const body = await parseFormData(req);
+      const customerKey = body.customerKey;
+      const type = body.type; // before or after
+      const staffKey = body.staffKey;
+      const customerName = body.customerName;
 
-      if (newNote.trim()) {
-        const today = new Date().toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit' });
-        const updatedNotes = existingNotes
-          ? `${existingNotes}\n${today} ${newNote.trim()}`
-          : `${today} ${newNote.trim()}`;
-
-        try {
-          await getToken();
-          await apiRequest('POST', 'appointment/addappointmentnotes', {
-            AppointmentId: appointmentId,
-            Notes: updatedNotes,
-          });
-          console.log(`Note added to appointment ${appointmentId}`);
-        } catch (err) {
-          console.error(`Failed to add note: ${err.message}`);
-        }
+      if (body.photo && body.photo.data) {
+        if (!photoStore[customerKey]) photoStore[customerKey] = {};
+        photoStore[customerKey][type] = body.photo.data;
+        console.log(`Photo uploaded: ${customerName} (${type}) - ${body.photo.data.length} bytes`);
       }
 
       res.writeHead(302, { 'Location': `/${staffKey}` });
@@ -515,19 +446,27 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    // Check authentication
-    if (!isAuthenticated(req)) {
-      res.writeHead(200, { 'Content-Type': 'text/html' });
-      res.end(renderLoginPage(false));
+    // Add note
+    if (reqPath === '/add-note' && req.method === 'POST') {
+      const body = await parseFormData(req);
+      const staffKey = body.staffKey;
+      // Note: in scraper mode, notes aren't saved back to Booker yet
+      console.log(`Note added for ${body.customerKey}: ${body.newNote}`);
+      res.writeHead(302, { 'Location': `/${staffKey}` });
+      res.end();
       return;
     }
 
+    // Home page
     if (reqPath === '/') {
+      // Reload data on each request to pick up fresh scrapes
+      loadAppointmentsData();
       res.writeHead(200, { 'Content-Type': 'text/html' });
       res.end(renderHomePage());
       return;
     }
 
+    // Staff schedule
     const staffKey = reqPath.substring(1).toLowerCase();
     const staff = STAFF[staffKey];
 
@@ -537,12 +476,12 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    const today = new Date().toISOString().split('T')[0];
-    const rawAppointments = await getAppointments(staff.id, today);
-    const appointments = await enrichAppointments(rawAppointments);
+    loadAppointmentsData();
+    const appointments = getStaffAppointments(staff.name);
+    const date = appointmentsData?.date || new Date().toISOString().split('T')[0];
 
     res.writeHead(200, { 'Content-Type': 'text/html' });
-    res.end(renderSchedulePage(staff.name, appointments, today));
+    res.end(renderSchedulePage(staff.name, appointments, date));
   } catch (err) {
     console.error('Error:', err.message);
     res.writeHead(500, { 'Content-Type': 'text/html' });
@@ -550,19 +489,11 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-async function start() {
-  console.log('DC Lash Bar - Artist Schedule Server\n');
-  console.log('Loading staff IDs...');
-  await initStaffIds();
-  await getSessionTypes();
+// --- Start ---
 
-  server.listen(CONFIG.port, () => {
-    console.log(`\nServer running at http://localhost:${CONFIG.port}`);
-    console.log('\nBookmark these links on each iPad:');
-    for (const [key, staff] of Object.entries(STAFF)) {
-      console.log(`  ${staff.name}: http://localhost:${CONFIG.port}/${key}`);
-    }
-  });
-}
+loadAppointmentsData();
 
-start();
+server.listen(CONFIG.port, () => {
+  console.log(`DC Lash Bar Schedule Server running on port ${CONFIG.port}`);
+  console.log(`Data source: ${CONFIG.useApi ? 'Mindbody API' : 'Scraped data file'}`);
+});
