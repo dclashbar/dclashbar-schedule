@@ -27,8 +27,32 @@ const LOGO_URL = 'https://images.squarespace-cdn.com/content/v1/572ba1b72fe13138
 // Photo storage (in-memory for now, keyed by client name)
 const photoStore = {};
 
+// Status storage (in-memory, keyed by appointment identifier)
+const statusStore = {};
+
+const STATUS_OPTIONS = [
+  { value: '', label: 'Not Set', color: '#ccc' },
+  { value: 'confirmed', label: 'Confirmed', color: '#3498db' },
+  { value: 'arrived', label: 'Arrived', color: '#27ae60' },
+  { value: 'in-progress', label: 'In Progress', color: '#f39c12' },
+  { value: 'complete', label: 'Complete', color: '#2ecc71' },
+  { value: 'no-show', label: 'No Show', color: '#e74c3c' },
+];
+
 // --- Data Source ---
 let appointmentsData = null;
+let emailSummaryData = null;
+
+function loadEmailSummary() {
+  const dataFile = path.join(__dirname, 'email-summary.json');
+  if (fs.existsSync(dataFile)) {
+    try {
+      emailSummaryData = JSON.parse(fs.readFileSync(dataFile, 'utf-8'));
+    } catch (err) {
+      console.error('Failed to load email summary:', err.message);
+    }
+  }
+}
 
 function loadAppointmentsData() {
   const dataFile = path.join(__dirname, 'appointments-data.json');
@@ -230,6 +254,56 @@ function renderSchedulePage(staffName, appointments, date) {
 </html>`;
 }
 
+function renderEmailSummary() {
+  if (!emailSummaryData || !emailSummaryData.actions || emailSummaryData.actions.length === 0) {
+    return '';
+  }
+
+  const typeIcons = {
+    cancellation: '❌',
+    reschedule: '🔄',
+    new_request: '📞',
+    customer_service: '💬',
+    voicemail_other: '📱',
+    other: '📧',
+  };
+
+  const typeColors = {
+    cancellation: '#e74c3c',
+    reschedule: '#f39c12',
+    new_request: '#3498db',
+    customer_service: '#9b59b6',
+    voicemail_other: '#1abc9c',
+    other: '#95a5a6',
+  };
+
+  let items = '';
+  for (const action of emailSummaryData.actions) {
+    const icon = typeIcons[action.type] || '📧';
+    const color = typeColors[action.type] || '#95a5a6';
+    const label = action.type.replace(/_/g, ' ').toUpperCase();
+    const name = action.customerName || action.from || 'Unknown';
+    const message = action.voicemailMessage || action.customerMessage || action.subject || '';
+
+    items += `
+      <div style="padding:12px; margin:8px 0; background:white; border-left:4px solid ${color}; border-radius:4px; box-shadow:0 1px 2px rgba(0,0,0,0.05);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+          <strong style="font-size:14px;">${icon} ${label}</strong>
+          ${action.phone ? `<span style="font-size:12px; color:#888;">${action.phone}</span>` : ''}
+        </div>
+        <div style="font-size:14px; font-weight:500; margin-bottom:2px;">${name}</div>
+        ${message ? `<div style="font-size:13px; color:#666; font-style:italic;">"${message.substring(0, 150)}${message.length > 150 ? '...' : ''}"</div>` : ''}
+        <div style="font-size:12px; color:#e74c3c; margin-top:4px; font-weight:500;">${action.actionNeeded}</div>
+      </div>`;
+  }
+
+  return `
+    <div style="background:#fff3cd; border:1px solid #ffc107; border-radius:8px; padding:15px; margin-bottom:15px;">
+      <h3 style="font-size:16px; margin-bottom:10px; color:#856404;">Overnight Messages (${emailSummaryData.actions.length})</h3>
+      ${items}
+    </div>`;
+}
+
 function renderHomePage() {
   let staffLinks = '';
   for (const [key, staff] of Object.entries(STAFF)) {
@@ -243,6 +317,7 @@ function renderHomePage() {
   }
 
   const dataDate = appointmentsData ? appointmentsData.date : 'No data loaded';
+  const emailSummaryHtml = renderEmailSummary();
 
   return `<!DOCTYPE html>
 <html>
@@ -256,7 +331,7 @@ function renderHomePage() {
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; color: #333; }
     .header { background: linear-gradient(135deg, #2c3e50, #3498db); color: white; padding: 25px; text-align: center; }
     .header p { margin-top: 8px; opacity: 0.9; }
-    .container { padding: 20px; max-width: 500px; margin: 0 auto; }
+    .container { padding: 20px; max-width: 600px; margin: 0 auto; }
     .data-info { text-align: center; color: #999; font-size: 12px; margin-top: 15px; }
   </style>
 </head>
@@ -266,6 +341,7 @@ function renderHomePage() {
     <p>Select your name to view today's schedule</p>
   </div>
   <div class="container">
+    ${emailSummaryHtml}
     ${staffLinks}
     <div class="data-info">Schedule data: ${dataDate}</div>
   </div>
@@ -461,6 +537,7 @@ const server = http.createServer(async (req, res) => {
     if (reqPath === '/') {
       // Reload data on each request to pick up fresh scrapes
       loadAppointmentsData();
+      loadEmailSummary();
       res.writeHead(200, { 'Content-Type': 'text/html' });
       res.end(renderHomePage());
       return;
