@@ -1,19 +1,5 @@
 {
-  "date": "2026-05-03",
-  "processedAt": "2026-05-03T11:02:09.897Z",
-  "actions": [
-    {
-      "type": "cancellation",
-      "threadId": "19dea3e4807408c5",
-      "subject": "GT EOD 5/2",
-      "from": "GT Shop <gt@dclashbar.com>",
-      "date": "Sat, 2 May 2026 18:20:43 -0400",
-      "customerName": "",
-      "phone": "202-864-6930",
-      "customerEmail": "",
-      "voicemailMessage": "",
-      "customerMessage": "",
-      "actionNeeded": "CANCEL appointment in Booker. (Stage 2: will be automated)"
-    }
-  ]
+  "date": "2026-05-04",
+  "processedAt": "2026-05-04T11:05:39.905Z",
+  "actions": []
 }
