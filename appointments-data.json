@@ -1,45 +1,91 @@
 {
-  "date": "2026-05-04",
-  "scrapedAt": "2026-05-04T14:20:58.117Z",
+  "date": "2026-05-05",
+  "scrapedAt": "2026-05-05T12:00:15.172Z",
   "staff": {
     "Emily Abramson": [],
-    "Hollyn Wooldridge": [],
+    "Hollyn Wooldridge": [
+      {
+        "appointmentOn": "May 5, 2026  10:00 am",
+        "serviceName": "Lash Tint",
+        "staffName": "Hollyn Wooldridge",
+        "customerName": "Mae",
+        "progressNotes": "8/2/25 Brow wax: soft wax, simple clean up, trimmed slightly, not too much. only wanted the hair growth located at the bottom of her brows removed- BM",
+        "staffNameFull": "Hollyn Wooldridge",
+        "customerFirstName": "Mae"
+      },
+      {
+        "appointmentOn": "May 5, 2026  10:30 am",
+        "serviceName": "Add Brow Wax",
+        "staffName": "Hollyn Wooldridge",
+        "customerName": "Mae",
+        "progressNotes": "8/2/25 Brow wax: soft wax, simple clean up, trimmed slightly, not too much. only wanted the hair growth located at the bottom of her brows removed- BM",
+        "staffNameFull": "Hollyn Wooldridge",
+        "customerFirstName": "Mae"
+      },
+      {
+        "appointmentOn": "May 5, 2026  11:00 am",
+        "serviceName": "Lash Lift & Tint",
+        "staffName": "Hollyn Wooldridge",
+        "customerName": "Lucy",
+        "progressNotes": "M Rod step1: 7min step2:5min blue/black top + bottomM rod\ns1 7 min\ns2 5 min\nBlue black top+bottomM rod s1:7min s2:5min BB tint top & bottom. going to beach next week. graduates H.S. on Fri. Going to college in Connecticut & has a peanut allergy. - IO 8/28 A simple wax-BM8/28 S-shield PF; S1: 7 min wrapped S2: 5 min wrapped and used blue black tint for lashes and left it on for 3 min and black tint for 2 min.-BM1/16/25 the guest is allergic to peanut and treenut.-BM1/16/25 please do not use almond oil on the guest, she is allergic to peanuts and treenut.-BM5/29/25 OS; L-rod S1: 8 min S2: 6 min, wrapped both steps. Lash tint; blue black - top/bottom lashes. Switched to an L-rod for more of a natural curl.-HW5/29/25 wax - soft wax, clean up *no almond oil used* - allergic to peanuts.-HW11/24/25 PF: M rod, S1: 9 mins, S2: 7 mins, Tint: Black for 5 mins, top only, ( maybe S rod next time)- BM122/30/25 OS: M shield, s1: 7 mins, S2: 5 mins, Tint: black for 5 mins, brow wax: soft wax- EA2/14/26 Same as previous notes- BM",
+        "staffNameFull": "Hollyn Wooldridge",
+        "customerFirstName": "Lucy"
+      },
+      {
+        "appointmentOn": "May 5, 2026  12:00 pm",
+        "serviceName": "Add Brow Wax",
+        "staffName": "Hollyn Wooldridge",
+        "customerName": "Lucy",
+        "progressNotes": "M Rod step1: 7min step2:5min blue/black top + bottomM rod\ns1 7 min\ns2 5 min\nBlue black top+bottomM rod s1:7min s2:5min BB tint top & bottom. going to beach next week. graduates H.S. on Fri. Going to college in Connecticut & has a peanut allergy. - IO 8/28 A simple wax-BM8/28 S-shield PF; S1: 7 min wrapped S2: 5 min wrapped and used blue black tint for lashes and left it on for 3 min and black tint for 2 min.-BM1/16/25 the guest is allergic to peanut and treenut.-BM1/16/25 please do not use almond oil on the guest, she is allergic to peanuts and treenut.-BM5/29/25 OS; L-rod S1: 8 min S2: 6 min, wrapped both steps. Lash tint; blue black - top/bottom lashes. Switched to an L-rod for more of a natural curl.-HW5/29/25 wax - soft wax, clean up *no almond oil used* - allergic to peanuts.-HW11/24/25 PF: M rod, S1: 9 mins, S2: 7 mins, Tint: Black for 5 mins, top only, ( maybe S rod next time)- BM122/30/25 OS: M shield, s1: 7 mins, S2: 5 mins, Tint: black for 5 mins, brow wax: soft wax- EA2/14/26 Same as previous notes- BM",
+        "staffNameFull": "Hollyn Wooldridge",
+        "customerFirstName": "Lucy"
+      },
+      {
+        "appointmentOn": "May 5, 2026  2:00 pm",
+        "serviceName": "Lash Lift & Tint",
+        "staffName": "Hollyn Wooldridge",
+        "customerName": "Maggie",
+        "progressNotes": "3/13/25 (Hollyn) OS; S1: s-rod S1: 7 mins, wrapped S2: 5 mins, wrapped. Tint - black-top lashes only.-BM5/29/25 brow tint - light b., tiny bit of brown + graphite. Brow map: more arch, emphasized shape more. Wax - soft wax, no retinol.-HW9/5/25 lashes grew, OS: M rod, S1: 7mins no wrap S2: 5 mins, Tint: black, top/bottom for 5 mins , Brow tint: brown, 4 mins ,light tweeze-HW1/3/26 OS M rod S1-7min wrapped for 3 min. S2-5min, wrapped. Lash tint: black top & bottom 5min. Brows: belmacil light brown + dark brown 2-3min. Wax: soft wax clean up - HW",
+        "staffNameFull": "Hollyn Wooldridge",
+        "customerFirstName": "Maggie"
+      },
+      {
+        "appointmentOn": "May 5, 2026  3:00 pm",
+        "serviceName": "Add Brow Tint",
+        "staffName": "Hollyn Wooldridge",
+        "customerName": "Maggie",
+        "progressNotes": "3/13/25 (Hollyn) OS; S1: s-rod S1: 7 mins, wrapped S2: 5 mins, wrapped. Tint - black-top lashes only.-BM5/29/25 brow tint - light b., tiny bit of brown + graphite. Brow map: more arch, emphasized shape more. Wax - soft wax, no retinol.-HW9/5/25 lashes grew, OS: M rod, S1: 7mins no wrap S2: 5 mins, Tint: black, top/bottom for 5 mins , Brow tint: brown, 4 mins ,light tweeze-HW1/3/26 OS M rod S1-7min wrapped for 3 min. S2-5min, wrapped. Lash tint: black top & bottom 5min. Brows: belmacil light brown + dark brown 2-3min. Wax: soft wax clean up - HW",
+        "staffNameFull": "Hollyn Wooldridge",
+        "customerFirstName": "Maggie"
+      }
+    ],
     "Shauntice Skye": [
       {
-        "appointmentOn": "May 4, 2026  10:00 am",
-        "serviceName": "Classic Full Set",
+        "appointmentOn": "May 5, 2026  10:00 am",
+        "serviceName": "Volume Two Week Fill",
         "staffName": "Shauntice  Skye",
-        "customerName": "Dana",
-        "progressNotes": "1/10/25 During the confirmation call thhe guest mentioned they are looking to get 9,10,11 C curl - the guest sometimes does C or D but mostly gets C curls. They mentioned they want it to look full (as many extesnions as possible added) but for the extensions to be the lightest and most natural in texture and appearance. I did let the guest know that if she had any pictures to keep them handy for the day of and that her artist will go ahead and guide them on how to move forward.-bm1/11/25 wants 100% coverage, C.015 she likes C curl only. I have uploaded a picture of the mapping for the guest for reference please let me know if you need it. Bottom - (out to in) 8, 11, 8, 8. Top - (out to in) 9, 10, 9, 9.-BM",
+        "customerName": "Mia",
+        "progressNotes": "hybrid 3w, G: EBL, L/C: 9,10,11,11,10,9/c.15/c.07 3d/4d fans, should see Lindsey when Shauntice leaveshybrid/2w, G: ebl glue, L/C: c.15/c.07, 3d/4d fans, 9,10,11,11/10/9kitten 7,8,9,10,11,10,9 c .07I used premade fans kitten eye effect\n7-11mmopen eye 9-11 (Shauntice)Hybrid 3 Week Fill, Look : Open Eye, 9 - 11 MM SS12/3 - same used face lashes C .05 7-11mm open eye. BD 1/17 same as before KG2/28/25 - Same - SS3/28/25 same as previous notes -SS4/17/25 same as previous notes.-SS5/2/25 same as previous notes.-SS7/10/25 Same as previous notes- GK8/22/25 same as previous notes-SS9/12/25 Same as previous notes-SS10/24/25 Same as previous notes-SS11/7/25 C.05 7-11mm open eye- SS12/1/25 Same as previous notes-SS12/23/25 Same as previous - SS1/15/26 same style but used PLA 8-11mm mixed 8 (Face and EBL).-SS *last visit was 12/23 - 2wk2/2/26 Used PLA C.06 open eye 8-11mm- SS2/20/26 Same as previous notes, 3D beauty and primer+bonder-SS3/5/26 same -SS3/18/26 Volume 1 week fill, C.06 open eye 8-11mm same-SS4/7/26 same as previous notes.-SS4/23/26 same - SS",
         "staffNameFull": "Shauntice Skye",
-        "customerFirstName": "Dana"
+        "customerFirstName": "Mia"
       },
       {
-        "appointmentOn": "May 4, 2026  12:00 pm",
-        "serviceName": "Lash Lift & Tint",
+        "appointmentOn": "May 5, 2026  12:00 pm",
+        "serviceName": "Lash & Brow Package (Lift & Tint + Brow Wax & Tint)",
         "staffName": "Shauntice  Skye",
-        "customerName": "Amanda",
-        "progressNotes": "Medium rod\n7min-perm\n6min-setting\nBlack tint- just too lashes 5 min.S shield- 7 mins \nBlack tint- top only 5 mins \n\nLikes straighter lift not curly- likes to see length of lashes Rod size: L. 6mins. Black tint. She wanted the lift so I place the solution a little bit below of the half mark S shield-7 1/2 mins- likes the straight up lift. tint-blue black top only No changes SS9/28 PF; S1: 10 min S2: 8 min and LBLA Keratin 3 min on rod Tint: blue black top only for 5 min.-BM12/12/24 called to cancel their 12/13/24 appt. due to being sick the guest mentioned she was sick with strep. Waived the cancellation fee this time.-BM4/2/25 same as previous notes.-SS",
+        "customerName": "Linda",
+        "progressNotes": "2/19/26 OS; m-flex shield S1: 7 mins S2: 5 mins. Lash tint - black/blue - top/bottom lashes - 5 mins. Brow sculpt - S1: 5 mins S2: 5 mins. Brow tint - light brown + tiny graphite - 4 min.-SS3/24/26 PF; m- flex shield S1: 12 mins S2: 8 mins Lash tint - black/blue - top/bottom lashes - 5 mins. Brow sculpt - BBL - S1: 5 mins S2: 5 mins. Added an extra 1.30 on certain hairs for step 1 of the brow sculpt. Brow tint - light brown + tiny graphite - 4 mins. Brow wax - hard wax.-SS",
         "staffNameFull": "Shauntice Skye",
-        "customerFirstName": "Amanda"
+        "customerFirstName": "Linda"
       },
       {
-        "appointmentOn": "May 4, 2026  2:00 pm",
-        "serviceName": "Lash Lift & Tint",
+        "appointmentOn": "May 5, 2026  2:00 pm",
+        "serviceName": "Lash & Brow Package (Lift & Tint + Brow Wax & Tint)",
         "staffName": "Shauntice  Skye",
-        "customerName": "Lara",
-        "progressNotes": "L rod s1:7 min s2: 5min dark brown tint top+bottom. black tint *****client prefers tightest curl with s rod and black tint, s1 7 min, s2 5 minLvl 2/ bronze & violet going to a formal on Sat. - IO9/25 OS; s-rod S1: 7 min S2: 5 min-BM90/26/24 client sent a bad review. Emailed to offer a correction. AH4/2/25 OS; L-rod S1: 7 min S2: 5 min. Lash tint; top lashes - brown and bottom lashes - black. To tint the bottom lashes asked the client to open eyes in order to avoid teary eyes.-MN10/13/25 Same as previous notes. tint: top/bottom, black for 5 mins- EA12/8/25 OS; L-rod S1: 7 mins S2: 5 mins and wrapped both steps. Tint - black - top/bottom - 5 mins.-HW2/11/26 Did the same as previous notes, When finished she said some of the lashes weren't lifted enough to her liking so i went back in and reprocessed the middle section on her left eye and the outer corner on her right. S1: 4 more mins, S2: 4 more mins. She said she was happier with the result but she was kinda in a rush/ mood so we'll see- GK 3/25/26 OS: M rod, S1: 7.30 mins, S2: 6 mins, Wrapped, tint: blue/ black, top/bottom for 5 mins, swtiched to M rod based on the notes from last time and she likes to listen to a podcast during the service- HW",
+        "customerName": "Madeleine",
+        "progressNotes": "L Rod s1:7min s2:5min Dark Brown top lashes only. \nBrow tint- light brown + middle brown. - Jada",
         "staffNameFull": "Shauntice Skye",
-        "customerFirstName": "Lara"
-      },
-      {
-        "appointmentOn": "May 4, 2026  4:00 pm",
-        "serviceName": "Brow Wax & Tint",
-        "staffName": "Shauntice  Skye",
-        "customerName": "Allegra",
-        "progressNotes": "lashes - first time trying lift, S shield - 7 mins, wrapped, brough solution up. tint - black + blue black- top and bottom lashes. brows- medium brown + a little graphite - around 3 mins, wanted brows natural but tint to define them more. wax- used soft wax and cleaned up brows, kept them full 1/31/26 brow tint - middle brown only this time - 3 mins, *wanted less bold look this time bc she is going out this evening. brow wax- soft wax - tweezed lightly, wanted brows on the thinner side, mapped out brows to show her where I was going to remove -BM 3/17/26 Wanted to stick with mid brown and wanted to try a straight brow and thinner. -SS",
-        "staffNameFull": "Shauntice Skye",
-        "customerFirstName": "Allegra"
+        "customerFirstName": "Madeleine"
       }
     ],
     "Hiba Fadel": []
