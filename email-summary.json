@@ -1,13 +1,13 @@
 {
-  "date": "2026-05-06",
-  "processedAt": "2026-05-06T11:06:17.062Z",
+  "date": "2026-05-07",
+  "processedAt": "2026-05-07T11:01:03.509Z",
   "actions": [
     {
       "type": "reschedule",
-      "threadId": "19ddeaa2f346af5d",
-      "subject": "GT EOD [04/30/26]",
+      "threadId": "19dfd64894b5c09d",
+      "subject": "Re: Today’s appointment",
       "from": "GT Shop <gt@dclashbar.com>",
-      "date": "Tue, 5 May 2026 10:33:36 -0400",
+      "date": "Wed, 6 May 2026 10:15:27 -0400",
       "customerName": "",
       "phone": "202-864-6930",
       "customerEmail": "",
