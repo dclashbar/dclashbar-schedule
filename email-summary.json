@@ -1,19 +1,5 @@
 {
-  "date": "2026-05-07",
-  "processedAt": "2026-05-07T11:01:03.509Z",
-  "actions": [
-    {
-      "type": "reschedule",
-      "threadId": "19dfd64894b5c09d",
-      "subject": "Re: Today’s appointment",
-      "from": "GT Shop <gt@dclashbar.com>",
-      "date": "Wed, 6 May 2026 10:15:27 -0400",
-      "customerName": "",
-      "phone": "202-864-6930",
-      "customerEmail": "",
-      "voicemailMessage": "",
-      "customerMessage": "",
-      "actionNeeded": "Check if new time was requested. RESCHEDULE or MOVE TO CLIPBOARD in Booker. (Stage 2: will be automated)"
-    }
-  ]
+  "date": "2026-05-08",
+  "processedAt": "2026-05-08T11:09:51.970Z",
+  "actions": []
 }
