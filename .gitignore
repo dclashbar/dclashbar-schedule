@@ -1,1 +1,5 @@
 node_modules/
+.superpowers/
+*.backup
+appointments-data.staging.json
+appointments-data.production.json

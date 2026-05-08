@@ -152,16 +152,55 @@ function renderSchedulePage(staffName, appointments, date) {
       appointmentRows += `
         <tr>
           <td style="padding:12px 15px; border-bottom:1px solid #eee; white-space:nowrap;">
-            <strong>${appt.appointmentOn || ''}</strong>
+            <strong>${(appt.appointmentOn || '').split(/\s{2,}/).pop()}</strong>
           </td>
-          <td style="padding:12px 15px; border-bottom:1px solid #eee;">
+          <td style="padding:12px 15px; border-bottom:1px solid #eee; max-width:220px; word-wrap:break-word; overflow-wrap:anywhere;">
             ${appt.serviceName || ''}
           </td>
           <td style="padding:12px 15px; border-bottom:1px solid #eee;">
-            ${appt.customerFirstName || appt.customerName || ''}${appt.firstAppointment ? ' <span style="background:#e67e22;color:white;padding:1px 6px;border-radius:8px;font-size:11px;">NEW</span>' : ''}${!hasIntakeForm(appt.customerName || appt.customerFirstName || '') ? ` <a href="/intake?staff=${staffKey}&client=${encodeURIComponent(appt.customerFirstName || appt.customerName || '')}" style="background:#e74c3c;color:white;padding:1px 6px;border-radius:8px;font-size:11px;text-decoration:none;">NO FORM</a>` : ''}
+            ${appt.customerFirstName || appt.customerName || ''}${appt.firstAppointment ? ' <span style="background:#e67e22;color:white;padding:1px 6px;border-radius:8px;font-size:11px;">NEW</span>' : ''}${(() => {
+              const s = appt.status || '';
+              if (!s) return '';
+              const colors = {
+                'Booked': '#95a5a6',
+                'Confirmed': '#3498db',
+                'Guest Checked-in': '#27ae60',
+                'Checked In': '#27ae60',
+                'In Service': '#f39c12',
+                'Paid/Complete': '#2ecc71',
+                'Complete': '#2ecc71',
+              };
+              const color = colors[s] || '#888';
+              return ` <span style="background:${color};color:white;padding:1px 6px;border-radius:8px;font-size:11px;">${s}</span>`;
+            })()}
           </td>
           <td style="padding:12px 15px; border-bottom:1px solid #eee;">
-            <div style="max-height:150px; overflow-y:auto; font-size:13px; color:#555; white-space:pre-wrap;">${appt.progressNotes || '<em style="color:#ccc;">No progress notes</em>'}</div>
+            ${(() => {
+              const latest = appt.latestProgressNote || '';
+              const older = Array.isArray(appt.olderProgressNotes) ? appt.olderProgressNotes : [];
+              const legacy = appt.progressNotes || '';
+              // No data at all
+              if (!latest && older.length === 0 && !legacy) {
+                return '<em style="color:#ccc; font-size:13px;">No progress notes</em>';
+              }
+              // Old-format data file (single string only) — fallback
+              if (!latest && legacy) {
+                return `<div style="max-height:150px; overflow-y:auto; font-size:13px; color:#555; white-space:pre-wrap;">${legacy}</div>`;
+              }
+              let html = `<div style="max-height:150px; overflow-y:auto; font-size:13px; color:#555; white-space:pre-wrap;">${latest}</div>`;
+              const skipped = appt.sameMarkersSkipped || 0;
+              if (skipped > 0) {
+                html += `<div style="margin-top:4px; font-size:11px; color:#888; font-style:italic;">Last ${skipped} visit${skipped === 1 ? '' : 's'}: same</div>`;
+              }
+              if (older.length) {
+                const olderHtml = older.join('<hr style="border:none;border-top:1px dashed #ccc;margin:8px 0;">');
+                html += `<details style="margin-top:6px;">
+                  <summary style="cursor:pointer;color:#3498db;font-size:12px;user-select:none;list-style:none;">+ ${older.length} older note${older.length === 1 ? '' : 's'}</summary>
+                  <div style="max-height:240px;overflow-y:auto;margin-top:6px;padding-left:10px;border-left:2px solid #ddd;font-size:12px;color:#777;white-space:pre-wrap;">${olderHtml}</div>
+                </details>`;
+              }
+              return html;
+            })()}
           </td>
           <td style="padding:12px 15px; border-bottom:1px solid #eee;">
             <div style="max-height:80px; overflow-y:auto; font-size:13px; color:#555; white-space:pre-wrap; margin-bottom:8px;">${appt.appointmentNotes || appt.notes || '<em style="color:#ccc;">No notes</em>'}</div>
@@ -179,30 +218,54 @@ function renderSchedulePage(staffName, appointments, date) {
               <div style="text-align:center;">
                 <div style="font-size:12px; font-weight:600; color:#666; margin-bottom:4px;">BEFORE</div>
                 ${beforeImg}
-                <form method="POST" action="/upload-photo" enctype="multipart/form-data" style="margin-top:6px;">
-                  <input type="hidden" name="customerKey" value="${customerKey}">
-                  <input type="hidden" name="type" value="before">
-                  <input type="hidden" name="staffKey" value="${staffKey}">
-                  <input type="hidden" name="customerName" value="${appt.customerFirstName || appt.customerName || ''}">
-                  <label style="padding:4px 10px; background:#95a5a6; color:white; border-radius:4px; cursor:pointer; font-size:12px;">
-                    Upload
-                    <input type="file" name="photo" accept="image/*" capture="environment" onchange="this.form.submit()" style="display:none;">
-                  </label>
-                </form>
+                <div style="display:flex; gap:4px; margin-top:6px; justify-content:center;">
+                  <form method="POST" action="/upload-photo" enctype="multipart/form-data" style="margin:0;">
+                    <input type="hidden" name="customerKey" value="${customerKey}">
+                    <input type="hidden" name="type" value="before">
+                    <input type="hidden" name="staffKey" value="${staffKey}">
+                    <input type="hidden" name="customerName" value="${appt.customerFirstName || appt.customerName || ''}">
+                    <label style="padding:4px 10px; background:#95a5a6; color:white; border-radius:4px; cursor:pointer; font-size:12px;">
+                      📷 Camera
+                      <input type="file" name="photo" accept="image/*" capture="environment" onchange="this.form.submit()" style="display:none;">
+                    </label>
+                  </form>
+                  <form method="POST" action="/upload-photo" enctype="multipart/form-data" style="margin:0;">
+                    <input type="hidden" name="customerKey" value="${customerKey}">
+                    <input type="hidden" name="type" value="before">
+                    <input type="hidden" name="staffKey" value="${staffKey}">
+                    <input type="hidden" name="customerName" value="${appt.customerFirstName || appt.customerName || ''}">
+                    <label style="padding:4px 10px; background:#3498db; color:white; border-radius:4px; cursor:pointer; font-size:12px;">
+                      🖼 Browse
+                      <input type="file" name="photo" accept="image/*" onchange="this.form.submit()" style="display:none;">
+                    </label>
+                  </form>
+                </div>
               </div>
               <div style="text-align:center;">
                 <div style="font-size:12px; font-weight:600; color:#666; margin-bottom:4px;">AFTER</div>
                 ${afterImg}
-                <form method="POST" action="/upload-photo" enctype="multipart/form-data" style="margin-top:6px;">
-                  <input type="hidden" name="customerKey" value="${customerKey}">
-                  <input type="hidden" name="type" value="after">
-                  <input type="hidden" name="staffKey" value="${staffKey}">
-                  <input type="hidden" name="customerName" value="${appt.customerFirstName || appt.customerName || ''}">
-                  <label style="padding:4px 10px; background:#95a5a6; color:white; border-radius:4px; cursor:pointer; font-size:12px;">
-                    Upload
-                    <input type="file" name="photo" accept="image/*" capture="environment" onchange="this.form.submit()" style="display:none;">
-                  </label>
-                </form>
+                <div style="display:flex; gap:4px; margin-top:6px; justify-content:center;">
+                  <form method="POST" action="/upload-photo" enctype="multipart/form-data" style="margin:0;">
+                    <input type="hidden" name="customerKey" value="${customerKey}">
+                    <input type="hidden" name="type" value="after">
+                    <input type="hidden" name="staffKey" value="${staffKey}">
+                    <input type="hidden" name="customerName" value="${appt.customerFirstName || appt.customerName || ''}">
+                    <label style="padding:4px 10px; background:#95a5a6; color:white; border-radius:4px; cursor:pointer; font-size:12px;">
+                      📷 Camera
+                      <input type="file" name="photo" accept="image/*" capture="environment" onchange="this.form.submit()" style="display:none;">
+                    </label>
+                  </form>
+                  <form method="POST" action="/upload-photo" enctype="multipart/form-data" style="margin:0;">
+                    <input type="hidden" name="customerKey" value="${customerKey}">
+                    <input type="hidden" name="type" value="after">
+                    <input type="hidden" name="staffKey" value="${staffKey}">
+                    <input type="hidden" name="customerName" value="${appt.customerFirstName || appt.customerName || ''}">
+                    <label style="padding:4px 10px; background:#3498db; color:white; border-radius:4px; cursor:pointer; font-size:12px;">
+                      🖼 Browse
+                      <input type="file" name="photo" accept="image/*" onchange="this.form.submit()" style="display:none;">
+                    </label>
+                  </form>
+                </div>
               </div>
             </div>
           </td>
