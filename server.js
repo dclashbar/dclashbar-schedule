@@ -489,13 +489,34 @@ function renderManagerSummary() {
     return Math.ceil(totalServices / 2);
   }
 
-  // Distribution plan: pair full-packet services chronologically per product
+  // Distribution plan: pair within-artist first (no handoff needed), then
+  // pool leftovers across artists chronologically (handoff required).
+  // Goal: minimize handoffs. Hollyn with 4 lifts → 2 packets she keeps;
+  // Hiba with 2 lifts → 1 packet she keeps; no handoffs at all.
   function distributionPlan(product) {
     const services = all.filter(a => a.sols.some(s => s.product === product && !s.halfPacket));
-    const packets = [];
-    for (let i = 0; i < services.length; i += 2) {
-      packets.push(services[i + 1] ? { first: services[i], second: services[i + 1] } : { first: services[i] });
+    const byArtist = {};
+    for (const s of services) {
+      (byArtist[s.artist] = byArtist[s.artist] || []).push(s);
     }
+    const packets = [];
+    const leftovers = [];
+    for (const items of Object.values(byArtist)) {
+      // Items are already in chronological order from the `all` sort above
+      for (let i = 0; i < items.length - 1; i += 2) {
+        packets.push({ first: items[i], second: items[i + 1] }); // same-artist pair
+      }
+      if (items.length % 2 === 1) leftovers.push(items[items.length - 1]);
+    }
+    // Pool leftovers chronologically across artists (handoffs)
+    leftovers.sort((a, b) => (a.appointmentOn || '').localeCompare(b.appointmentOn || ''));
+    for (let i = 0; i < leftovers.length; i += 2) {
+      packets.push(leftovers[i + 1]
+        ? { first: leftovers[i], second: leftovers[i + 1] }
+        : { first: leftovers[i] });
+    }
+    // Sort all packets by first-appointment time for stable display
+    packets.sort((a, b) => (a.first.appointmentOn || '').localeCompare(b.first.appointmentOn || ''));
     return packets;
   }
 
