@@ -325,24 +325,60 @@ function renderSchedulePage(staffName, appointments, date) {
       tr.photo-row > td { display: block; padding: 8px 10px 10px !important; background: white; border-radius: 0 0 8px 8px; margin-top: -10px; border-bottom: 0 !important; }
     }
 
-    /* Print: clean agenda for the HP MFP. Hide UI chrome, expand notes,
-       drop interactive controls. AirPrint / browser print dialog selects the printer. */
+    /* Print: clean agenda for the HP MFP. The print viewport is narrow, so
+       the (max-width: 768px) mobile rules above also match — we explicitly
+       reset them back to a real table layout for paper output. */
     @media print {
-      body { background: white; }
-      .header { background: white !important; color: #000 !important; padding: 0 0 12px; border-bottom: 2px solid #000; }
-      .header img { filter: none !important; }
-      .header h1, .header .date, .header .count { color: #000 !important; }
+      @page { size: landscape; margin: 0.4in; }
+      body { background: white; font-size: 11px; }
+      .header { background: white !important; color: #000 !important; padding: 0 0 8px; border-bottom: 2px solid #000; display: block; }
+      .header img { filter: none !important; height: 28px !important; }
+      .header h1 { color: #000 !important; font-size: 18px; }
+      .header .date, .header .count { color: #000 !important; font-size: 11px; }
       .header .back, .no-print { display: none !important; }
       .container { padding: 0; overflow: visible; }
-      table { box-shadow: none; min-width: 0; border: 1px solid #999; page-break-inside: auto; }
-      tr { page-break-inside: avoid; page-break-after: auto; }
-      thead { display: table-header-group; }
-      tr.photo-row { display: none; }
+
+      /* Undo mobile-stack: force normal table layout with full-width columns */
+      table { box-shadow: none !important; min-width: 0 !important; background: white !important;
+              border: 1px solid #999; width: 100% !important; table-layout: fixed; margin-top: 8px; }
+      thead { display: table-header-group !important; }
+      tbody { display: table-row-group !important; }
+      thead th { background: #f8f9fa !important; padding: 5px 6px !important; font-size: 10px !important; }
+      tr.appointment-row {
+        display: table-row !important;
+        grid-template-areas: none !important;
+        grid-template-columns: none !important;
+        background: white !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        page-break-inside: avoid;
+      }
+      tr.appointment-row > td {
+        display: table-cell !important;
+        padding: 5px 6px !important;
+        border-bottom: 1px solid #ccc !important;
+        border-top: 0 !important;
+        vertical-align: top !important;
+        max-width: none !important;
+        font-size: 11px !important;
+      }
+      /* Column widths tuned for landscape letter */
+      tr.appointment-row > td:nth-child(1) { width: 9%; white-space: nowrap; }
+      tr.appointment-row > td:nth-child(2) { width: 16%; }
+      tr.appointment-row > td:nth-child(3) { width: 14%; font-weight: 600; }
+      tr.appointment-row > td:nth-child(4) { width: 41%; }
+      tr.appointment-row > td:nth-child(5) { width: 20%; }
+      tr.photo-row { display: none !important; }
       form, button, textarea { display: none !important; }
+      /* Expand collapsed older notes so the full history prints */
       details { display: block; }
       details > summary { display: none; }
       details > div { max-height: none !important; padding-left: 0 !important; border-left: 0 !important; }
       td > div { max-height: none !important; overflow: visible !important; }
+      /* Email summary banner — keep but slimmer */
+      .email-summary, .container > div:first-child { font-size: 10px !important; padding: 6px 8px !important; }
     }
   </style>
 </head>
