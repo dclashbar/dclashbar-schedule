@@ -174,6 +174,16 @@ function renderSchedulePage(staffName, appointments, date) {
               return ` <span style="background:${color};color:white;padding:1px 6px;border-radius:8px;font-size:11px;">${s}</span>`;
             })()}
           </td>
+          <td style="padding:12px 15px; border-bottom:1px solid #eee; font-size:13px; color:#555; white-space:nowrap;">
+            ${(() => {
+              const display = appt.lastVisitDisplay || '';
+              if (!display) return '<em style="color:#ccc;">—</em>';
+              if (appt.isFirstVisit) return '<span style="color:#e67e22; font-weight:600;">First visit</span>';
+              const days = appt.lastVisitDays;
+              const color = days >= 35 ? '#e74c3c' : days >= 21 ? '#f39c12' : '#555';
+              return `<span style="color:${color};">${display}</span>`;
+            })()}
+          </td>
           <td style="padding:12px 15px; border-bottom:1px solid #eee;">
             ${(() => {
               const latest = appt.latestProgressNote || '';
@@ -213,7 +223,7 @@ function renderSchedulePage(staffName, appointments, date) {
           </td>
         </tr>
         <tr class="photo-row">
-          <td colspan="5" style="padding:8px 15px 16px; border-bottom:2px solid #ddd; background:#fafafa;">
+          <td colspan="6" style="padding:8px 15px 16px; border-bottom:2px solid #ddd; background:#fafafa;">
             <div style="display:flex; gap:20px; align-items:flex-start;">
               <div style="text-align:center;">
                 <div style="font-size:12px; font-weight:600; color:#666; margin-bottom:4px;">BEFORE</div>
@@ -307,7 +317,8 @@ function renderSchedulePage(staffName, appointments, date) {
         grid-template-areas:
           "time notes"
           "service notes"
-          "guest entry";
+          "guest notes"
+          "lastvisit entry";
         gap: 6px 10px;
         padding: 12px 10px 10px;
         background: white;
@@ -319,8 +330,9 @@ function renderSchedulePage(staffName, appointments, date) {
       tr.appointment-row > td:nth-child(1) { grid-area: time; }
       tr.appointment-row > td:nth-child(2) { grid-area: service; font-size: 13px; color: #666; }
       tr.appointment-row > td:nth-child(3) { grid-area: guest; font-weight: 600; }
-      tr.appointment-row > td:nth-child(4) { grid-area: notes; }
-      tr.appointment-row > td:nth-child(5) { grid-area: entry; }
+      tr.appointment-row > td:nth-child(4) { grid-area: lastvisit; font-size: 12px; }
+      tr.appointment-row > td:nth-child(5) { grid-area: notes; }
+      tr.appointment-row > td:nth-child(6) { grid-area: entry; }
       tr.photo-row { display: block; }
       tr.photo-row > td { display: block; padding: 8px 10px 10px !important; background: white; border-radius: 0 0 8px 8px; margin-top: -10px; border-bottom: 0 !important; }
     }
@@ -364,12 +376,13 @@ function renderSchedulePage(staffName, appointments, date) {
         max-width: none !important;
         font-size: 11px !important;
       }
-      /* Column widths tuned for landscape letter */
-      tr.appointment-row > td:nth-child(1) { width: 9%; white-space: nowrap; }
-      tr.appointment-row > td:nth-child(2) { width: 16%; }
-      tr.appointment-row > td:nth-child(3) { width: 14%; font-weight: 600; }
-      tr.appointment-row > td:nth-child(4) { width: 41%; }
-      tr.appointment-row > td:nth-child(5) { width: 20%; }
+      /* Column widths tuned for landscape letter (now 6 cols incl. Last Visit) */
+      tr.appointment-row > td:nth-child(1) { width: 8%; white-space: nowrap; }
+      tr.appointment-row > td:nth-child(2) { width: 14%; }
+      tr.appointment-row > td:nth-child(3) { width: 12%; font-weight: 600; }
+      tr.appointment-row > td:nth-child(4) { width: 10%; }
+      tr.appointment-row > td:nth-child(5) { width: 38%; }
+      tr.appointment-row > td:nth-child(6) { width: 18%; }
       tr.photo-row { display: none !important; }
       form, button, textarea { display: none !important; }
       /* Expand collapsed older notes so the full history prints */
@@ -397,6 +410,7 @@ function renderSchedulePage(staffName, appointments, date) {
     </div>
   </div>
   <div class="container">
+    ${renderSolutionsBanner(appointments)}
     ${renderEmailSummary() || '<div style="background:#d4edda; border:1px solid #28a745; border-radius:8px; padding:12px 15px; margin-bottom:15px; color:#155724; font-size:14px;">All overnight messages have been checked and incorporated into today\'s agenda.</div>'}
     <table>
       <thead>
@@ -404,6 +418,7 @@ function renderSchedulePage(staffName, appointments, date) {
           <th>Appointment On</th>
           <th>Service Name</th>
           <th>Customer</th>
+          <th>Last Visit</th>
           <th style="min-width:200px;">Customer Progress Notes</th>
           <th style="min-width:250px;">Notes</th>
         </tr>
@@ -418,6 +433,42 @@ function renderSchedulePage(staffName, appointments, date) {
   </div>
 </body>
 </html>`;
+}
+
+// Service-name → chemical solution(s) used. Manager pre-distributes each morning.
+function solutionsForService(name) {
+  if (!name) return [];
+  const lower = name.toLowerCase();
+  const out = [];
+  if (lower.includes('lash lift')) {
+    out.push(lower.includes('vegan') ? 'Profusion' : 'One Shot');
+  }
+  if (lower.includes('brow sculpt')) {
+    out.push(lower.includes('vegan') ? 'Profusion' : 'BBL');
+  }
+  return out;
+}
+
+function renderSolutionsBanner(appointments) {
+  const tally = {};
+  for (const a of appointments) {
+    for (const sol of solutionsForService(a.serviceName)) {
+      tally[sol] = (tally[sol] || 0) + 1;
+    }
+  }
+  if (Object.keys(tally).length === 0) return '';
+  const palette = { 'One Shot': '#3498db', 'Profusion': '#27ae60', 'BBL': '#e67e22' };
+  const items = Object.entries(tally)
+    .sort((a, b) => b[1] - a[1])
+    .map(([s, n]) => {
+      const c = palette[s] || '#95a5a6';
+      return `<span style="display:inline-block;background:${c};color:white;padding:4px 10px;border-radius:12px;font-size:13px;font-weight:600;margin-right:6px;">${s} × ${n}</span>`;
+    })
+    .join('');
+  return `<div style="background:#fff8e1;border:1px solid #ffc107;border-radius:8px;padding:10px 14px;margin-bottom:15px;">
+    <div style="font-size:11px;color:#7d4f10;text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-bottom:6px;">Solutions to distribute today</div>
+    ${items}
+  </div>`;
 }
 
 function renderEmailSummary() {
