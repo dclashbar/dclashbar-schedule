@@ -1,6 +1,6 @@
 {
   "date": "2026-05-09",
-  "scrapedAt": "2026-05-09T10:30:39.431Z",
+  "scrapedAt": "2026-05-09T14:43:42.819Z",
   "staff": {
     "Hollyn Wooldridge": [
       {
@@ -8,7 +8,7 @@
         "serviceName": "Lash Lift & Tint",
         "staffName": "Hollyn Wooldridge",
         "customerName": "Mary",
-        "status": "Confirmed",
+        "status": "Guest Checked-in",
         "isConfirmationSent": true,
         "latestProgressNote": "3/28/26 S shield (LBLA) OS- S1: 7 mins, wrapped. S2: 5 mins, wrapped. tint- blue black - top/bottom - one eye, the lashes are thicker, the side that is not as full I put the tint on longer to give a thicker appearance *said she would start using the growth serum, going on a cruise soon -HW",
         "olderProgressNotes": [
@@ -208,7 +208,7 @@
         "serviceName": "Lash Lift",
         "staffName": "Hiba Fadel",
         "customerName": "Madeleine",
-        "status": "Confirmed",
+        "status": "Guest Checked-in",
         "isConfirmationSent": true,
         "latestProgressNote": "3/19/26 Doesn't like the under eyepads so after adhering to the shield I remove pads and run saline solution on her waterline to help with stinging. I fanned out the ends w/ the s-shield. Same timings. Personally feel like she could have more of a lift, leave on longer next time?-EA",
         "olderProgressNotes": [
