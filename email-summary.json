@@ -1,5 +1,19 @@
 {
-  "date": "2026-05-08",
-  "processedAt": "2026-05-08T11:09:51.970Z",
-  "actions": []
+  "date": "2026-05-09",
+  "processedAt": "2026-05-09T11:04:27.791Z",
+  "actions": [
+    {
+      "type": "reschedule",
+      "threadId": "19e07f2ad0d0f7a2",
+      "subject": "GT EOD 5/8",
+      "from": "GT Shop <gt@dclashbar.com>",
+      "date": "Fri, 8 May 2026 19:03:54 -0400",
+      "customerName": "",
+      "phone": "202-864-6930",
+      "customerEmail": "",
+      "voicemailMessage": "",
+      "customerMessage": "",
+      "actionNeeded": "Check if new time was requested. RESCHEDULE or MOVE TO CLIPBOARD in Booker. (Stage 2: will be automated)"
+    }
+  ]
 }
