@@ -150,6 +150,7 @@ function renderSchedulePage(staffName, appointments, date) {
           </td>
           <td style="padding:12px 15px; border-bottom:1px solid #eee; max-width:220px; word-wrap:break-word; overflow-wrap:anywhere;">
             ${appt.serviceName || ''}
+            ${appt.serviceMismatch ? `<div style="margin-top:4px;font-size:11px;color:#c0392b;background:#fdecea;border:1px solid #f5b7b1;border-radius:6px;padding:2px 6px;display:inline-block;" title="${appt.serviceMismatch.reason}">⚠ likely <strong>${appt.serviceMismatch.suggestion}</strong></div>` : ''}
           </td>
           <td style="padding:12px 15px; border-bottom:1px solid #eee;">
             ${appt.customerFirstName || appt.customerName || ''}${appt.firstAppointment ? ' <span style="background:#e67e22;color:white;padding:1px 6px;border-radius:8px;font-size:11px;">NEW</span>' : ''}${(() => {
@@ -168,6 +169,11 @@ function renderSchedulePage(staffName, appointments, date) {
               return ` <span style="background:${color};color:white;padding:1px 6px;border-radius:8px;font-size:11px;">${s}</span>`;
             })()}
             ${appt.customerId ? ` <a href="https://app.secure-booker.com/App/SpaAdmin/Customers/EditCustomer/EditPhotos.aspx?CustomerID=${appt.customerId}" target="_blank" rel="noopener" title="Manage photos in Booker" style="text-decoration:none;font-size:14px;margin-left:4px;" class="no-print">📷</a>` : ''}
+            ${(appt.photos && appt.photos.length) ? `
+              <div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap;">
+                ${appt.photos.map(p => `<a href="${p.url}" target="_blank" rel="noopener" title="${p.uploadedOffset ? p.uploadedOffset.slice(0,10) : ''}"><img src="${p.url}" loading="lazy" style="width:48px;height:48px;object-fit:cover;border-radius:4px;border:1px solid #ddd;display:block;" alt=""></a>`).join('')}
+              </div>
+            ` : ''}
           </td>
           <td style="padding:12px 15px; border-bottom:1px solid #eee; font-size:13px; color:#555; white-space:nowrap;">
             ${(() => {
