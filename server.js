@@ -378,116 +378,263 @@ function renderSchedulePage(staffName, appointments, date) {
 </html>`;
 }
 
-// Service-name → chemical solution(s) used. Manager pre-distributes each morning.
-function solutionsForService(name) {
-  if (!name) return [];
-  const lower = name.toLowerCase();
+// Determine which chemical solution(s) an appointment will consume, based on
+// service name + the customer's most recent note + first-visit status.
+//
+// Rules from Stephanie:
+//   - Lash Lift booked + last note "OS" → One Shot
+//   - Lash Lift booked + last note "PF" → Profusion (likely should be Vegan)
+//   - Vegan Lash Lift → Profusion
+//   - First-visit Lash Lift (no history) → BOTH One Shot + Profusion (return unused)
+//   - Brow Sculpt → BBL (half-packet each)
+//   - Vegan Brow Sculpt → Profusion (half-packet each)
+//   - Lash & Brow Package containing a lift → same lift logic
+//
+// Returns array of { product, halfPacket, isNewGuest } objects.
+function solutionsNeeded(serviceName, latestNote, isFirstVisit) {
+  if (!serviceName) return [];
+  const sLower = serviceName.toLowerCase();
+  // Match "lash lift" explicitly OR a package that includes a lift
+  const usesLashLift = sLower.includes('lash lift')
+    || (sLower.includes('lift') && (sLower.includes('lash') || sLower.includes('package')));
+  const usesBrowSculpt = sLower.includes('brow sculpt');
+  const isVegan = sLower.includes('vegan');
+  const noteHasPF = latestNote && /\bpf\b/i.test(latestNote);
+  const noteHasOS = latestNote && /\bos\b/i.test(latestNote);
+
   const out = [];
-  if (lower.includes('lash lift')) {
-    out.push(lower.includes('vegan') ? 'Profusion' : 'One Shot');
+  if (usesLashLift) {
+    if (isVegan) {
+      out.push({ product: 'Profusion', halfPacket: false, isNewGuest: false });
+    } else if (isFirstVisit) {
+      // Distribute both; one is returned at end of service
+      out.push({ product: 'One Shot', halfPacket: false, isNewGuest: true });
+      out.push({ product: 'Profusion', halfPacket: false, isNewGuest: true });
+    } else if (noteHasPF && !noteHasOS) {
+      out.push({ product: 'Profusion', halfPacket: false, isNewGuest: false });
+    } else {
+      // OS noted, or no clear marker → default to One Shot
+      out.push({ product: 'One Shot', halfPacket: false, isNewGuest: false });
+    }
   }
-  if (lower.includes('brow sculpt')) {
-    out.push(lower.includes('vegan') ? 'Profusion' : 'BBL');
+  if (usesBrowSculpt) {
+    out.push({
+      product: isVegan ? 'Profusion' : 'BBL',
+      halfPacket: true,
+      isNewGuest: false,
+    });
   }
   return out;
 }
 
-// Manager-facing summary for the home page: which solutions to distribute,
-// how many packets needed (1 packet = 2 services), and handoff plan.
-// Assumption: One Shot / Profusion / BBL packets can be shared across two
-// services (with a handoff between artists if needed).
+// Manager oversight view for the home page. Three sections:
+//   1. Service breakdown by product (counts by category)
+//   2. Distribution plan (who gets which packet, handoffs)
+//   3. Beginning/Ending balance form (autosaved to localStorage per day)
 function renderManagerSummary() {
   if (!appointmentsData || !appointmentsData.staff) return '';
 
-  // Flatten all appointments with artist attached, sorted chronologically
+  // Flatten all appointments with artist + needed solutions attached
   const all = [];
   for (const [artist, rows] of Object.entries(appointmentsData.staff)) {
-    for (const r of rows) all.push({ ...r, artist });
+    for (const r of rows) {
+      const sols = solutionsNeeded(r.serviceName, r.latestProgressNote, r.isFirstVisit);
+      all.push({ ...r, artist, sols });
+    }
   }
   all.sort((a, b) => (a.appointmentOn || '').localeCompare(b.appointmentOn || ''));
 
-  // Group services that use a solution
-  const byMaterial = {};
+  // Categorize services for the breakdown table
+  const categories = {
+    'Lash Lift (One Shot)': [],
+    'Lash Lift (Profusion)': [],
+    'Lash Lift (NEW guest — both packets, one returned)': [],
+    'Brow Sculpt (BBL — ½ packet each)': [],
+    'Vegan Brow Sculpt (Profusion — ½ packet each)': [],
+  };
   for (const a of all) {
-    for (const sol of solutionsForService(a.serviceName)) {
-      (byMaterial[sol] = byMaterial[sol] || []).push(a);
+    if (!a.sols.length) continue;
+    const isNewLift = a.sols.some(s => s.isNewGuest);
+    const sLower = (a.serviceName || '').toLowerCase();
+    const usesLift = sLower.includes('lash lift')
+      || (sLower.includes('lift') && (sLower.includes('lash') || sLower.includes('package')));
+    const usesSculpt = sLower.includes('brow sculpt');
+    const isVegan = sLower.includes('vegan');
+    if (usesLift) {
+      if (isNewLift) categories['Lash Lift (NEW guest — both packets, one returned)'].push(a);
+      else if (isVegan || a.sols.some(s => s.product === 'Profusion' && !s.halfPacket)) categories['Lash Lift (Profusion)'].push(a);
+      else categories['Lash Lift (One Shot)'].push(a);
+    }
+    if (usesSculpt) {
+      if (isVegan) categories['Vegan Brow Sculpt (Profusion — ½ packet each)'].push(a);
+      else categories['Brow Sculpt (BBL — ½ packet each)'].push(a);
     }
   }
-  if (Object.keys(byMaterial).length === 0) return '';
 
-  // Pair every two services into one packet (in chronological order)
-  function distributionPlan(services) {
+  // Tally: for each product, total full-packet services + half-packet services
+  // Recommended packets: 1 packet covers 2 full-packet services OR 2 half-packet services
+  const productTally = { 'One Shot': { full: 0, half: 0, newGuest: 0 }, 'Profusion': { full: 0, half: 0, newGuest: 0 }, 'BBL': { full: 0, half: 0, newGuest: 0 } };
+  for (const a of all) {
+    for (const s of a.sols) {
+      const t = productTally[s.product] || (productTally[s.product] = { full: 0, half: 0, newGuest: 0 });
+      if (s.halfPacket) t.half++;
+      else t.full++;
+      if (s.isNewGuest) t.newGuest++;
+    }
+  }
+
+  function packetsNeeded(t) {
+    // 1 packet = 2 services (full or half). Round up.
+    const totalServices = t.full + t.half;
+    return Math.ceil(totalServices / 2);
+  }
+
+  // Distribution plan: pair full-packet services chronologically per product
+  function distributionPlan(product) {
+    const services = all.filter(a => a.sols.some(s => s.product === product && !s.halfPacket));
     const packets = [];
     for (let i = 0; i < services.length; i += 2) {
-      const a = services[i];
-      const b = services[i + 1];
-      packets.push(b ? { first: a, second: b } : { first: a });
+      packets.push(services[i + 1] ? { first: services[i], second: services[i + 1] } : { first: services[i] });
     }
     return packets;
   }
 
-  // Date and staff list
   const dateStr = appointmentsData.date
     ? new Date(appointmentsData.date + 'T12:00:00').toLocaleDateString('en-US',
         { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
     : 'today';
-  const artistsToday = Object.keys(appointmentsData.staff).filter(
-    n => appointmentsData.staff[n].length > 0
-  );
-  const artistList = artistsToday.length === 0
-    ? 'no artists'
-    : artistsToday.length === 1
-    ? artistsToday[0]
-    : artistsToday.length === 2
-    ? `${artistsToday[0]} and ${artistsToday[1]}`
+  const artistsToday = Object.keys(appointmentsData.staff).filter(n => appointmentsData.staff[n].length > 0);
+  const artistList = artistsToday.length === 0 ? 'no artists'
+    : artistsToday.length === 1 ? artistsToday[0]
+    : artistsToday.length === 2 ? `${artistsToday[0]} and ${artistsToday[1]}`
     : `${artistsToday.slice(0, -1).join(', ')}, and ${artistsToday.slice(-1)}`;
 
   const palette = { 'One Shot': '#3498db', 'Profusion': '#27ae60', 'BBL': '#e67e22' };
 
-  // Render one section per solution
-  let solutionSections = '';
-  for (const sol of Object.keys(byMaterial).sort()) {
-    const services = byMaterial[sol];
-    const packets = distributionPlan(services);
-    const color = palette[sol] || '#95a5a6';
+  // Section 1: Service breakdown
+  let breakdownRows = '';
+  for (const [label, items] of Object.entries(categories)) {
+    if (items.length === 0) continue;
+    breakdownRows += `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed #eee;font-size:13px;">
+      <span style="color:#555;">${label}</span>
+      <strong style="color:#2c3e50;">${items.length}</strong>
+    </div>`;
+  }
+  if (!breakdownRows) breakdownRows = '<div style="color:#999;font-style:italic;font-size:13px;">No solution-using services today.</div>';
 
-    let packetLines = '';
-    packets.forEach((p, idx) => {
+  // Section 2: Distribution plan per product
+  let distPlanSections = '';
+  for (const product of ['One Shot', 'Profusion', 'BBL']) {
+    const plan = distributionPlan(product);
+    if (plan.length === 0) continue;
+    const color = palette[product];
+    let lines = '';
+    plan.forEach((p, idx) => {
       const firstArtist = p.first.artist.split(' ')[0];
       const firstTime = (p.first.appointmentOn || '').split(/\s{2,}/).pop();
       if (!p.second) {
-        packetLines += `<div style="margin:4px 0;font-size:13px;color:#444;">
-          <strong>Packet ${idx + 1}</strong> → ${firstArtist} (${firstTime} ${p.first.serviceName})
-        </div>`;
+        lines += `<div style="margin:3px 0;font-size:12px;color:#444;"><strong>Packet ${idx + 1}</strong> → ${firstArtist} (${firstTime})</div>`;
       } else {
         const secondArtist = p.second.artist.split(' ')[0];
         const secondTime = (p.second.appointmentOn || '').split(/\s{2,}/).pop();
         const handoff = firstArtist === secondArtist
-          ? `also use at ${secondTime}`
+          ? `also use ${secondTime}`
           : `<strong style="color:${color};">hand off to ${secondArtist} by ${secondTime}</strong>`;
-        packetLines += `<div style="margin:4px 0;font-size:13px;color:#444;">
-          <strong>Packet ${idx + 1}</strong> → ${firstArtist} (${firstTime} ${p.first.serviceName}), ${handoff} (${p.second.serviceName})
-        </div>`;
+        lines += `<div style="margin:3px 0;font-size:12px;color:#444;"><strong>Packet ${idx + 1}</strong> → ${firstArtist} (${firstTime}), ${handoff}</div>`;
       }
     });
-
-    solutionSections += `<div style="margin-top:14px;">
-      <div style="font-size:13px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:1px;">
-        ${sol} — ${packets.length} packet${packets.length === 1 ? '' : 's'} needed (${services.length} service${services.length === 1 ? '' : 's'})
-      </div>
-      ${packetLines}
+    distPlanSections += `<div style="margin-top:10px;">
+      <div style="font-size:12px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:1px;">${product}</div>
+      ${lines}
     </div>`;
   }
+
+  // Section 3: Beginning/Ending balance — autosaved per-day to localStorage
+  let balanceRows = '';
+  for (const product of ['One Shot', 'Profusion', 'BBL']) {
+    const t = productTally[product];
+    if (t.full + t.half === 0) continue;
+    const color = palette[product];
+    const recommended = packetsNeeded(t);
+    const summary = [
+      t.full ? `${t.full} full` : '',
+      t.half ? `${t.half} ½` : '',
+      t.newGuest ? `${t.newGuest} NEW guest` : '',
+    ].filter(Boolean).join(', ');
+    balanceRows += `<div style="display:grid;grid-template-columns:1fr auto auto auto;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid #eee;">
+      <div>
+        <div style="font-size:13px;font-weight:700;color:${color};">${product}</div>
+        <div style="font-size:11px;color:#888;">${summary} → recommend ${recommended} packet${recommended === 1 ? '' : 's'}</div>
+      </div>
+      <div style="font-size:11px;color:#888;text-align:right;">
+        Beginning<br>
+        <input type="number" min="0" data-balance-key="${product}-begin" style="width:60px;padding:4px 6px;border:1px solid #ccc;border-radius:4px;font-size:13px;text-align:center;" placeholder="—">
+      </div>
+      <div style="font-size:11px;color:#888;text-align:right;">
+        Ending<br>
+        <input type="number" min="0" data-balance-key="${product}-end" style="width:60px;padding:4px 6px;border:1px solid #ccc;border-radius:4px;font-size:13px;text-align:center;" placeholder="—">
+      </div>
+      <div style="font-size:11px;color:#888;text-align:right;min-width:60px;">
+        Δ<br>
+        <span data-balance-delta="${product}" style="font-size:14px;font-weight:600;color:#555;">—</span>
+      </div>
+    </div>`;
+  }
+  const balanceSection = balanceRows ? `
+    <div style="font-size:11px;color:#7d4f10;text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-top:18px;margin-bottom:6px;">
+      Inventory tracking
+    </div>
+    <div style="background:white;border:1px solid #eee;border-radius:6px;padding:8px 12px;">${balanceRows}</div>
+    <div style="font-size:11px;color:#888;margin-top:6px;font-style:italic;">Autosaves to this device for today.</div>
+  ` : '';
+
+  // Inline JS for localStorage autosave + delta calculation
+  const balanceScript = `<script>(function(){
+    var today = "${appointmentsData.date}";
+    var key = "dclb-balance-" + today;
+    var saved = JSON.parse(localStorage.getItem(key) || "{}");
+    document.querySelectorAll("[data-balance-key]").forEach(function(input){
+      var k = input.getAttribute("data-balance-key");
+      if (saved[k] != null) input.value = saved[k];
+      input.addEventListener("input", function(){
+        saved[k] = input.value;
+        localStorage.setItem(key, JSON.stringify(saved));
+        recalc();
+      });
+    });
+    function recalc(){
+      document.querySelectorAll("[data-balance-delta]").forEach(function(span){
+        var product = span.getAttribute("data-balance-delta");
+        var begin = saved[product+"-begin"], end = saved[product+"-end"];
+        if (begin !== "" && end !== "" && begin != null && end != null) {
+          var delta = Number(begin) - Number(end);
+          span.textContent = "−" + delta;
+          span.style.color = delta > 0 ? "#27ae60" : "#888";
+        } else { span.textContent = "—"; span.style.color = "#888"; }
+      });
+    }
+    recalc();
+  })();</script>`;
 
   return `<div style="background:#fff8e1;border:1px solid #ffc107;border-radius:8px;padding:14px 18px;margin-bottom:18px;">
     <div style="font-size:15px;color:#5d3a05;line-height:1.5;">
       Good morning! Today is <strong>${dateStr}</strong> and <strong>${artistList}</strong> ${artistsToday.length === 1 ? 'is' : 'are'} scheduled for service.
     </div>
-    <div style="font-size:11px;color:#7d4f10;text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-top:14px;">
-      Solutions to distribute (1 packet = 2 services)
+
+    <div style="font-size:11px;color:#7d4f10;text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-top:14px;margin-bottom:6px;">
+      Service breakdown
     </div>
-    ${solutionSections}
-  </div>`;
+    <div style="background:white;border:1px solid #eee;border-radius:6px;padding:8px 12px;">${breakdownRows}</div>
+
+    ${distPlanSections ? `
+      <div style="font-size:11px;color:#7d4f10;text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-top:18px;margin-bottom:6px;">
+        Distribution plan (1 full packet = 2 services, ½-packet items pair with each other)
+      </div>
+      <div style="background:white;border:1px solid #eee;border-radius:6px;padding:8px 12px;">${distPlanSections}</div>
+    ` : ''}
+
+    ${balanceSection}
+  </div>${balanceScript}`;
 }
 
 function renderEmailSummary() {
@@ -567,7 +714,7 @@ function renderHomePage() {
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; color: #333; }
     .header { background: linear-gradient(135deg, #2c3e50, #3498db); color: white; padding: 25px; text-align: center; }
     .header p { margin-top: 8px; opacity: 0.9; }
-    .container { padding: 20px; max-width: 600px; margin: 0 auto; }
+    .container { padding: 20px; max-width: 800px; margin: 0 auto; }
     .data-info { text-align: center; color: #999; font-size: 12px; margin-top: 15px; }
   </style>
 </head>
