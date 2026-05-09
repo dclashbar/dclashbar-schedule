@@ -324,6 +324,26 @@ function renderSchedulePage(staffName, appointments, date) {
       tr.photo-row { display: block; }
       tr.photo-row > td { display: block; padding: 8px 10px 10px !important; background: white; border-radius: 0 0 8px 8px; margin-top: -10px; border-bottom: 0 !important; }
     }
+
+    /* Print: clean agenda for the HP MFP. Hide UI chrome, expand notes,
+       drop interactive controls. AirPrint / browser print dialog selects the printer. */
+    @media print {
+      body { background: white; }
+      .header { background: white !important; color: #000 !important; padding: 0 0 12px; border-bottom: 2px solid #000; }
+      .header img { filter: none !important; }
+      .header h1, .header .date, .header .count { color: #000 !important; }
+      .header .back, .no-print { display: none !important; }
+      .container { padding: 0; overflow: visible; }
+      table { box-shadow: none; min-width: 0; border: 1px solid #999; page-break-inside: auto; }
+      tr { page-break-inside: avoid; page-break-after: auto; }
+      thead { display: table-header-group; }
+      tr.photo-row { display: none; }
+      form, button, textarea { display: none !important; }
+      details { display: block; }
+      details > summary { display: none; }
+      details > div { max-height: none !important; padding-left: 0 !important; border-left: 0 !important; }
+      td > div { max-height: none !important; overflow: visible !important; }
+    }
   </style>
 </head>
 <body>
@@ -334,7 +354,8 @@ function renderSchedulePage(staffName, appointments, date) {
       <div class="date">${today}</div>
       <div class="count">${appointments.length} appointment${appointments.length !== 1 ? 's' : ''} today</div>
     </div>
-    <div style="text-align:right;">
+    <div style="text-align:right;" class="no-print">
+      <button onclick="window.print()" style="padding:8px 16px; background:white; color:#2c3e50; border:none; border-radius:6px; font-size:14px; font-weight:600; cursor:pointer; margin-right:6px;">🖨 Print</button>
       <a href="/intake?staff=${Object.entries(STAFF).find(([k, s]) => s.name === staffName)?.[0] || ''}" style="display:inline-block; padding:8px 16px; background:white; color:#2c3e50; border-radius:6px; text-decoration:none; font-size:14px; font-weight:600; margin-bottom:8px;">+ New Client Intake</a><br>
       <a href="/" class="back">All Staff</a>
     </div>
