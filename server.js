@@ -394,6 +394,7 @@ function renderSchedulePage(staffName, appointments, date) {
 function solutionsNeeded(serviceName, latestNote, isFirstVisit) {
   if (!serviceName) return [];
   const sLower = serviceName.toLowerCase();
+  const isCorrection = sLower.includes('correction');
   // Match "lash lift" explicitly OR a package that includes a lift
   const usesLashLift = sLower.includes('lash lift')
     || (sLower.includes('lift') && (sLower.includes('lash') || sLower.includes('package')));
@@ -403,6 +404,15 @@ function solutionsNeeded(serviceName, latestNote, isFirstVisit) {
   const noteHasOS = latestNote && /\bos\b/i.test(latestNote);
 
   const out = [];
+  // Corrections lift (e.g., "Corrections Lash Lift & Tint") → ½ packet of Profusion.
+  // Detect first so it doesn't fall into the general lash-lift bucket below.
+  if (isCorrection && usesLashLift) {
+    out.push({ product: 'Profusion', halfPacket: true, isNewGuest: false });
+    if (usesBrowSculpt) {
+      out.push({ product: isVegan ? 'Profusion' : 'BBL', halfPacket: true, isNewGuest: false });
+    }
+    return out;
+  }
   if (usesLashLift) {
     if (isVegan) {
       out.push({ product: 'Profusion', halfPacket: false, isNewGuest: false });
@@ -449,6 +459,7 @@ function renderManagerSummary() {
     'Lash Lift (One Shot)': [],
     'Lash Lift (Profusion)': [],
     'Lash Lift (NEW guest — both packets, one returned)': [],
+    'Corrections Lash Lift (Profusion — ½ packet each)': [],
     'Brow Sculpt (BBL — ½ packet each)': [],
     'Vegan Brow Sculpt (Profusion — ½ packet each)': [],
   };
@@ -456,12 +467,14 @@ function renderManagerSummary() {
     if (!a.sols.length) continue;
     const isNewLift = a.sols.some(s => s.isNewGuest);
     const sLower = (a.serviceName || '').toLowerCase();
+    const isCorrection = sLower.includes('correction');
     const usesLift = sLower.includes('lash lift')
       || (sLower.includes('lift') && (sLower.includes('lash') || sLower.includes('package')));
     const usesSculpt = sLower.includes('brow sculpt');
     const isVegan = sLower.includes('vegan');
     if (usesLift) {
-      if (isNewLift) categories['Lash Lift (NEW guest — both packets, one returned)'].push(a);
+      if (isCorrection) categories['Corrections Lash Lift (Profusion — ½ packet each)'].push(a);
+      else if (isNewLift) categories['Lash Lift (NEW guest — both packets, one returned)'].push(a);
       else if (isVegan || a.sols.some(s => s.product === 'Profusion' && !s.halfPacket)) categories['Lash Lift (Profusion)'].push(a);
       else categories['Lash Lift (One Shot)'].push(a);
     }
