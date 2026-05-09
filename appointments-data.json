@@ -1,6 +1,6 @@
 {
   "date": "2026-05-09",
-  "scrapedAt": "2026-05-09T18:23:35.537Z",
+  "scrapedAt": "2026-05-09T18:53:06.127Z",
   "staff": {
     "Hollyn Wooldridge": [
       {
@@ -15,6 +15,8 @@
         "lastVisitDays": 0,
         "lastVisitDate": "5/9/26",
         "isFirstVisit": false,
+        "photos": [],
+        "serviceMismatch": null,
         "latestProgressNote": "3/28/26 S shield (LBLA) OS- S1: 7 mins, wrapped. S2: 5 mins, wrapped. tint- blue black - top/bottom - one eye, the lashes are thicker, the side that is not as full I put the tint on longer to give a thicker appearance *said she would start using the growth serum, going on a cruise soon -HW",
         "olderProgressNotes": [
           "2/21/26 Same as previous notes *daughter got bite by a dog - HW",
@@ -59,6 +61,8 @@
         "lastVisitDays": 0,
         "lastVisitDate": "5/9/26",
         "isFirstVisit": false,
+        "photos": [],
+        "serviceMismatch": null,
         "latestProgressNote": "4/11/26 Has been liking them a bit darker. Brow tint: Honey brown + tiny bit of red + tiny bit of dark brown for 4/5 mins.-HW",
         "olderProgressNotes": [
           "3/14/26 has been liking them a bit darker. Brow tint: Honey brown+tiny bit of red+ tiny bit of dark brown for 4/5 mins-HW  ",
@@ -113,6 +117,8 @@
         "lastVisitDays": 0,
         "lastVisitDate": "5/9/26",
         "isFirstVisit": false,
+        "photos": [],
+        "serviceMismatch": null,
         "latestProgressNote": "3/7/26 Correction - S shield (LBLA) for another 2 mins, retinted - moving forward she may need LBLA S shield & go past max timing process for 9/10 mins *lashes are just ver resistant and fall -HW",
         "olderProgressNotes": [
           "3/6/26 S flexi shield - OS - S1: 8 mins, wrapped  S2: 6 mins, wrapped. tint - blue black - top/bottom - 5 mins *likes them super lifted, goes to school in Michigan -HW",
@@ -144,6 +150,8 @@
         "lastVisitDays": 35,
         "lastVisitDate": "4/4/26",
         "isFirstVisit": false,
+        "photos": [],
+        "serviceMismatch": null,
         "latestProgressNote": "4/4/26 brow tint - light b (belmacil) -3 mins - light tweeze/ trim - she is growing brows. *her lashes got really wacky after the lift I did a conditioning treatment and will switch her to vegan lift -HW",
         "olderProgressNotes": [
           "2/20/26 Same as previous notes, Brow tint: light brown- HW",
@@ -180,6 +188,8 @@
         "lastVisitDays": 31,
         "lastVisitDate": "4/8/26",
         "isFirstVisit": false,
+        "photos": [],
+        "serviceMismatch": null,
         "latestProgressNote": "4/8/26 brow map - has pretty thin brows naturally, likes the arch softened and the front brushed up. Wax - soft wax. *getting bleph surgery.-HW ",
         "olderProgressNotes": [
           "4/8/26 BBL (we were out of OS); s-shield (LBLA) S1: 6 mins, wrapped S2: 5 mins, wrapped. Lash tint - blue black - top/bottom - 5 mins.-HW",
@@ -217,6 +227,8 @@
         "lastVisitDays": 1,
         "lastVisitDate": "5/8/26",
         "isFirstVisit": false,
+        "photos": [],
+        "serviceMismatch": null,
         "latestProgressNote": "",
         "olderProgressNotes": [],
         "sameMarkersSkipped": 0,
@@ -240,6 +252,8 @@
         "lastVisitDays": 0,
         "lastVisitDate": "5/9/26",
         "isFirstVisit": false,
+        "photos": [],
+        "serviceMismatch": null,
         "latestProgressNote": "3/19/26 Doesn't like the under eyepads so after adhering to the shield I remove pads and run saline solution on her waterline to help with stinging. I fanned out the ends w/ the s-shield. Same timings. Personally feel like she could have more of a lift, leave on longer next time?-EA",
         "olderProgressNotes": [
           "1/15/26 OS: S shield, S1: 8 mins, S2: 6 mins, she wanted the ended more fanned out for more of a cat eye look so I opted for a S shield-EA",
@@ -267,6 +281,8 @@
         "lastVisitDays": 0,
         "lastVisitDate": "5/9/26",
         "isFirstVisit": false,
+        "photos": [],
+        "serviceMismatch": null,
         "latestProgressNote": "light brown + natural- tiny bit of black, did ombre natural effect- color came out perfect ",
         "olderProgressNotes": [
           "Brown and light brown mixed 5 min"
@@ -284,12 +300,14 @@
         "staffName": "Hiba Fadel",
         "customerName": "Toshia",
         "customerId": 253279982,
-        "status": "Guest Checked-in",
+        "status": "Paid/Complete",
         "isConfirmationSent": false,
-        "lastVisitDisplay": "15 days ago (4/24/26)",
-        "lastVisitDays": 15,
-        "lastVisitDate": "4/24/26",
+        "lastVisitDisplay": "Today (5/9/26)",
+        "lastVisitDays": 0,
+        "lastVisitDate": "5/9/26",
         "isFirstVisit": false,
+        "photos": [],
+        "serviceMismatch": null,
         "latestProgressNote": "4/24/26 She wanted natural so I did a very light hybrid with C.03 fans and mostly C.15 8-9-10-11mm we will try longer lengths next time- EA",
         "olderProgressNotes": [],
         "sameMarkersSkipped": 0,
@@ -311,6 +329,8 @@
         "lastVisitDays": 3392,
         "lastVisitDate": "1/24/17",
         "isFirstVisit": false,
+        "photos": [],
+        "serviceMismatch": null,
         "latestProgressNote": "",
         "olderProgressNotes": [],
         "sameMarkersSkipped": 0,
@@ -332,6 +352,8 @@
         "lastVisitDays": null,
         "lastVisitDate": "",
         "isFirstVisit": true,
+        "photos": [],
+        "serviceMismatch": null,
         "latestProgressNote": "",
         "olderProgressNotes": [],
         "sameMarkersSkipped": 0,
