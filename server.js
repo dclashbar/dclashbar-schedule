@@ -150,7 +150,7 @@ function renderSchedulePage(staffName, appointments, date) {
       const afterImg = photos.after ? `<img src="/photos/${customerKey}/after" style="max-width:120px; max-height:90px; border-radius:4px;">` : '<span style="color:#ccc; font-size:12px;">No photo</span>';
 
       appointmentRows += `
-        <tr>
+        <tr class="appointment-row">
           <td style="padding:12px 15px; border-bottom:1px solid #eee; white-space:nowrap;">
             <strong>${(appt.appointmentOn || '').split(/\s{2,}/).pop()}</strong>
           </td>
@@ -212,7 +212,7 @@ function renderSchedulePage(staffName, appointments, date) {
             </form>
           </td>
         </tr>
-        <tr>
+        <tr class="photo-row">
           <td colspan="5" style="padding:8px 15px 16px; border-bottom:2px solid #ddd; background:#fafafa;">
             <div style="display:flex; gap:20px; align-items:flex-start;">
               <div style="text-align:center;">
@@ -292,6 +292,38 @@ function renderSchedulePage(staffName, appointments, date) {
     table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); min-width: 800px; }
     thead th { background: #f8f9fa; padding: 12px 15px; text-align: left; font-weight: 600; font-size: 13px; text-transform: uppercase; color: #666; border-bottom: 2px solid #eee; white-space: nowrap; }
     .footer { text-align: center; padding: 15px; color: #999; font-size: 12px; }
+
+    /* Mobile: collapse the 5-column table into a stacked 2-column card per appointment.
+       Left column: time / service / guest stacked.
+       Right column: progress notes (with +older expand) / appointment notes + add-note. */
+    @media (max-width: 768px) {
+      .container { padding: 8px; overflow-x: visible; }
+      table { min-width: 0; box-shadow: none; background: transparent; }
+      thead { display: none; }
+      tbody { display: block; }
+      tr.appointment-row {
+        display: grid;
+        grid-template-columns: 1fr 1.3fr;
+        grid-template-areas:
+          "time notes"
+          "service notes"
+          "guest entry";
+        gap: 6px 10px;
+        padding: 12px 10px 10px;
+        background: white;
+        border-radius: 8px;
+        margin-top: 10px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      }
+      tr.appointment-row > td { padding: 0 !important; border: 0 !important; max-width: none !important; }
+      tr.appointment-row > td:nth-child(1) { grid-area: time; }
+      tr.appointment-row > td:nth-child(2) { grid-area: service; font-size: 13px; color: #666; }
+      tr.appointment-row > td:nth-child(3) { grid-area: guest; font-weight: 600; }
+      tr.appointment-row > td:nth-child(4) { grid-area: notes; }
+      tr.appointment-row > td:nth-child(5) { grid-area: entry; }
+      tr.photo-row { display: block; }
+      tr.photo-row > td { display: block; padding: 8px 10px 10px !important; background: white; border-radius: 0 0 8px 8px; margin-top: -10px; border-bottom: 0 !important; }
+    }
   </style>
 </head>
 <body>
