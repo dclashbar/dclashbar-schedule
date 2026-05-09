@@ -25,9 +25,6 @@ const STAFF = {
 
 const LOGO_URL = 'https://images.squarespace-cdn.com/content/v1/572ba1b72fe13138bc8e1fe9/92764f7d-c61c-4ef2-89f9-f0bf8444215a/Transparent+Logo+%282%29.png';
 
-// Photo storage (in-memory for now, keyed by client name)
-const photoStore = {};
-
 // Check if a client has submitted an intake form
 function hasIntakeForm(customerName) {
   const intakeDir = path.join(__dirname, 'intakes');
@@ -145,9 +142,6 @@ function renderSchedulePage(staffName, appointments, date) {
 
     for (const appt of appointments) {
       const customerKey = (appt.customerFirstName || appt.customerName || '').toLowerCase().replace(/\s+/g, '_');
-      const photos = photoStore[customerKey] || {};
-      const beforeImg = photos.before ? `<img src="/photos/${customerKey}/before" style="max-width:120px; max-height:90px; border-radius:4px;">` : '<span style="color:#ccc; font-size:12px;">No photo</span>';
-      const afterImg = photos.after ? `<img src="/photos/${customerKey}/after" style="max-width:120px; max-height:90px; border-radius:4px;">` : '<span style="color:#ccc; font-size:12px;">No photo</span>';
 
       appointmentRows += `
         <tr class="appointment-row">
@@ -173,6 +167,7 @@ function renderSchedulePage(staffName, appointments, date) {
               const color = colors[s] || '#888';
               return ` <span style="background:${color};color:white;padding:1px 6px;border-radius:8px;font-size:11px;">${s}</span>`;
             })()}
+            ${appt.customerId ? ` <a href="https://app.secure-booker.com/App/SpaAdmin/Customers/EditCustomer/EditPhotos.aspx?CustomerID=${appt.customerId}" target="_blank" rel="noopener" title="Manage photos in Booker" style="text-decoration:none;font-size:14px;margin-left:4px;" class="no-print">📷</a>` : ''}
           </td>
           <td style="padding:12px 15px; border-bottom:1px solid #eee; font-size:13px; color:#555; white-space:nowrap;">
             ${(() => {
@@ -222,64 +217,7 @@ function renderSchedulePage(staffName, appointments, date) {
             </form>
           </td>
         </tr>
-        <tr class="photo-row">
-          <td colspan="6" style="padding:8px 15px 16px; border-bottom:2px solid #ddd; background:#fafafa;">
-            <div style="display:flex; gap:20px; align-items:flex-start;">
-              <div style="text-align:center;">
-                <div style="font-size:12px; font-weight:600; color:#666; margin-bottom:4px;">BEFORE</div>
-                ${beforeImg}
-                <div style="display:flex; gap:4px; margin-top:6px; justify-content:center;">
-                  <form method="POST" action="/upload-photo" enctype="multipart/form-data" style="margin:0;">
-                    <input type="hidden" name="customerKey" value="${customerKey}">
-                    <input type="hidden" name="type" value="before">
-                    <input type="hidden" name="staffKey" value="${staffKey}">
-                    <input type="hidden" name="customerName" value="${appt.customerFirstName || appt.customerName || ''}">
-                    <label style="padding:4px 10px; background:#95a5a6; color:white; border-radius:4px; cursor:pointer; font-size:12px;">
-                      📷 Camera
-                      <input type="file" name="photo" accept="image/*" capture="environment" onchange="this.form.submit()" style="display:none;">
-                    </label>
-                  </form>
-                  <form method="POST" action="/upload-photo" enctype="multipart/form-data" style="margin:0;">
-                    <input type="hidden" name="customerKey" value="${customerKey}">
-                    <input type="hidden" name="type" value="before">
-                    <input type="hidden" name="staffKey" value="${staffKey}">
-                    <input type="hidden" name="customerName" value="${appt.customerFirstName || appt.customerName || ''}">
-                    <label style="padding:4px 10px; background:#3498db; color:white; border-radius:4px; cursor:pointer; font-size:12px;">
-                      🖼 Browse
-                      <input type="file" name="photo" accept="image/*" onchange="this.form.submit()" style="display:none;">
-                    </label>
-                  </form>
-                </div>
-              </div>
-              <div style="text-align:center;">
-                <div style="font-size:12px; font-weight:600; color:#666; margin-bottom:4px;">AFTER</div>
-                ${afterImg}
-                <div style="display:flex; gap:4px; margin-top:6px; justify-content:center;">
-                  <form method="POST" action="/upload-photo" enctype="multipart/form-data" style="margin:0;">
-                    <input type="hidden" name="customerKey" value="${customerKey}">
-                    <input type="hidden" name="type" value="after">
-                    <input type="hidden" name="staffKey" value="${staffKey}">
-                    <input type="hidden" name="customerName" value="${appt.customerFirstName || appt.customerName || ''}">
-                    <label style="padding:4px 10px; background:#95a5a6; color:white; border-radius:4px; cursor:pointer; font-size:12px;">
-                      📷 Camera
-                      <input type="file" name="photo" accept="image/*" capture="environment" onchange="this.form.submit()" style="display:none;">
-                    </label>
-                  </form>
-                  <form method="POST" action="/upload-photo" enctype="multipart/form-data" style="margin:0;">
-                    <input type="hidden" name="customerKey" value="${customerKey}">
-                    <input type="hidden" name="type" value="after">
-                    <input type="hidden" name="staffKey" value="${staffKey}">
-                    <input type="hidden" name="customerName" value="${appt.customerFirstName || appt.customerName || ''}">
-                    <label style="padding:4px 10px; background:#3498db; color:white; border-radius:4px; cursor:pointer; font-size:12px;">
-                      🖼 Browse
-                      <input type="file" name="photo" accept="image/*" onchange="this.form.submit()" style="display:none;">
-                    </label>
-                  </form>
-                </div>
-              </div>
-            </div>
-          </td>
-        </tr>`;
+`;
     }
   }
 
@@ -697,45 +635,10 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    // Serve photos
-    if (reqPath.startsWith('/photos/')) {
-      const parts = reqPath.split('/');
-      const customerKey = parts[2];
-      const type = parts[3]; // before or after
-      const photo = photoStore[customerKey]?.[type];
-      if (photo) {
-        res.writeHead(200, { 'Content-Type': 'image/jpeg' });
-        res.end(photo);
-      } else {
-        res.writeHead(404);
-        res.end();
-      }
-      return;
-    }
-
     // Auth check
     if (!isAuthenticated(req)) {
       res.writeHead(200, { 'Content-Type': 'text/html' });
       res.end(renderLoginPage(false));
-      return;
-    }
-
-    // Upload photo
-    if (reqPath === '/upload-photo' && req.method === 'POST') {
-      const body = await parseFormData(req);
-      const customerKey = body.customerKey;
-      const type = body.type; // before or after
-      const staffKey = body.staffKey;
-      const customerName = body.customerName;
-
-      if (body.photo && body.photo.data) {
-        if (!photoStore[customerKey]) photoStore[customerKey] = {};
-        photoStore[customerKey][type] = body.photo.data;
-        console.log(`Photo uploaded: ${customerName} (${type}) - ${body.photo.data.length} bytes`);
-      }
-
-      res.writeHead(302, { 'Location': `/${staffKey}` });
-      res.end();
       return;
     }
 
