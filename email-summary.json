@@ -1,5 +1,19 @@
 {
   "date": "2026-05-09",
-  "processedAt": "2026-05-09T11:04:27.791Z",
-  "actions": []
+  "processedAt": "2026-05-09T14:43:44.798Z",
+  "actions": [
+    {
+      "type": "reschedule",
+      "threadId": "19dfd64894b5c09d",
+      "subject": "Re: Today’s appointment",
+      "from": "Sophie Robertson <ksophiarobertson@gmail.com>",
+      "date": "Sat, 9 May 2026 10:25:59 -0400",
+      "customerName": "",
+      "phone": "202-864-6930",
+      "customerEmail": "",
+      "voicemailMessage": "",
+      "customerMessage": "",
+      "actionNeeded": "Check if new time was requested. RESCHEDULE or MOVE TO CLIPBOARD in Booker. (Stage 2: will be automated)"
+    }
+  ]
 }
