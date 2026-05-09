@@ -348,7 +348,6 @@ function renderSchedulePage(staffName, appointments, date) {
     </div>
   </div>
   <div class="container">
-    ${renderSolutionsBanner(appointments)}
     ${renderEmailSummary() || '<div style="background:#d4edda; border:1px solid #28a745; border-radius:8px; padding:12px 15px; margin-bottom:15px; color:#155724; font-size:14px;">All overnight messages have been checked and incorporated into today\'s agenda.</div>'}
     <table>
       <thead>
@@ -387,25 +386,101 @@ function solutionsForService(name) {
   return out;
 }
 
-function renderSolutionsBanner(appointments) {
-  const tally = {};
-  for (const a of appointments) {
+// Manager-facing summary for the home page: which solutions to distribute,
+// how many packets needed (1 packet = 2 services), and handoff plan.
+// Assumption: One Shot / Profusion / BBL packets can be shared across two
+// services (with a handoff between artists if needed).
+function renderManagerSummary() {
+  if (!appointmentsData || !appointmentsData.staff) return '';
+
+  // Flatten all appointments with artist attached, sorted chronologically
+  const all = [];
+  for (const [artist, rows] of Object.entries(appointmentsData.staff)) {
+    for (const r of rows) all.push({ ...r, artist });
+  }
+  all.sort((a, b) => (a.appointmentOn || '').localeCompare(b.appointmentOn || ''));
+
+  // Group services that use a solution
+  const byMaterial = {};
+  for (const a of all) {
     for (const sol of solutionsForService(a.serviceName)) {
-      tally[sol] = (tally[sol] || 0) + 1;
+      (byMaterial[sol] = byMaterial[sol] || []).push(a);
     }
   }
-  if (Object.keys(tally).length === 0) return '';
+  if (Object.keys(byMaterial).length === 0) return '';
+
+  // Pair every two services into one packet (in chronological order)
+  function distributionPlan(services) {
+    const packets = [];
+    for (let i = 0; i < services.length; i += 2) {
+      const a = services[i];
+      const b = services[i + 1];
+      packets.push(b ? { first: a, second: b } : { first: a });
+    }
+    return packets;
+  }
+
+  // Date and staff list
+  const dateStr = appointmentsData.date
+    ? new Date(appointmentsData.date + 'T12:00:00').toLocaleDateString('en-US',
+        { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+    : 'today';
+  const artistsToday = Object.keys(appointmentsData.staff).filter(
+    n => appointmentsData.staff[n].length > 0
+  );
+  const artistList = artistsToday.length === 0
+    ? 'no artists'
+    : artistsToday.length === 1
+    ? artistsToday[0]
+    : artistsToday.length === 2
+    ? `${artistsToday[0]} and ${artistsToday[1]}`
+    : `${artistsToday.slice(0, -1).join(', ')}, and ${artistsToday.slice(-1)}`;
+
   const palette = { 'One Shot': '#3498db', 'Profusion': '#27ae60', 'BBL': '#e67e22' };
-  const items = Object.entries(tally)
-    .sort((a, b) => b[1] - a[1])
-    .map(([s, n]) => {
-      const c = palette[s] || '#95a5a6';
-      return `<span style="display:inline-block;background:${c};color:white;padding:4px 10px;border-radius:12px;font-size:13px;font-weight:600;margin-right:6px;">${s} × ${n}</span>`;
-    })
-    .join('');
-  return `<div style="background:#fff8e1;border:1px solid #ffc107;border-radius:8px;padding:10px 14px;margin-bottom:15px;">
-    <div style="font-size:11px;color:#7d4f10;text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-bottom:6px;">Solutions to distribute today</div>
-    ${items}
+
+  // Render one section per solution
+  let solutionSections = '';
+  for (const sol of Object.keys(byMaterial).sort()) {
+    const services = byMaterial[sol];
+    const packets = distributionPlan(services);
+    const color = palette[sol] || '#95a5a6';
+
+    let packetLines = '';
+    packets.forEach((p, idx) => {
+      const firstArtist = p.first.artist.split(' ')[0];
+      const firstTime = (p.first.appointmentOn || '').split(/\s{2,}/).pop();
+      if (!p.second) {
+        packetLines += `<div style="margin:4px 0;font-size:13px;color:#444;">
+          <strong>Packet ${idx + 1}</strong> → ${firstArtist} (${firstTime} ${p.first.serviceName})
+        </div>`;
+      } else {
+        const secondArtist = p.second.artist.split(' ')[0];
+        const secondTime = (p.second.appointmentOn || '').split(/\s{2,}/).pop();
+        const handoff = firstArtist === secondArtist
+          ? `also use at ${secondTime}`
+          : `<strong style="color:${color};">hand off to ${secondArtist} by ${secondTime}</strong>`;
+        packetLines += `<div style="margin:4px 0;font-size:13px;color:#444;">
+          <strong>Packet ${idx + 1}</strong> → ${firstArtist} (${firstTime} ${p.first.serviceName}), ${handoff} (${p.second.serviceName})
+        </div>`;
+      }
+    });
+
+    solutionSections += `<div style="margin-top:14px;">
+      <div style="font-size:13px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:1px;">
+        ${sol} — ${packets.length} packet${packets.length === 1 ? '' : 's'} needed (${services.length} service${services.length === 1 ? '' : 's'})
+      </div>
+      ${packetLines}
+    </div>`;
+  }
+
+  return `<div style="background:#fff8e1;border:1px solid #ffc107;border-radius:8px;padding:14px 18px;margin-bottom:18px;">
+    <div style="font-size:15px;color:#5d3a05;line-height:1.5;">
+      Good morning! Today is <strong>${dateStr}</strong> and <strong>${artistList}</strong> ${artistsToday.length === 1 ? 'is' : 'are'} scheduled for service.
+    </div>
+    <div style="font-size:11px;color:#7d4f10;text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-top:14px;">
+      Solutions to distribute (1 packet = 2 services)
+    </div>
+    ${solutionSections}
   </div>`;
 }
 
@@ -496,6 +571,7 @@ function renderHomePage() {
     <p>Select your name to view today's schedule</p>
   </div>
   <div class="container">
+    ${renderManagerSummary()}
     ${emailSummaryHtml}
     ${staffLinks}
     <div class="data-info">Schedule data: ${dataDate}</div>
