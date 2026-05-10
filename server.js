@@ -676,8 +676,8 @@ function renderManagerSummary() {
         <span data-balance-delta="${product}" style="font-size:14px;font-weight:600;color:#555;">—</span>
       </div>
       <div style="text-align:right;">
-        <button data-sync-product="${product}" style="padding:6px 10px;background:${color};color:white;border:none;border-radius:4px;font-size:12px;cursor:pointer;font-weight:600;" title="Set Booker BackbarInventory to the Ending value">🔄 Sync</button>
-        <div data-sync-status="${product}" style="font-size:10px;color:#888;margin-top:3px;min-height:12px;"></div>
+        <button disabled style="padding:6px 10px;background:#ccc;color:#666;border:none;border-radius:4px;font-size:12px;cursor:not-allowed;font-weight:600;" title="In development — direct Booker sync still being wired up">🔄 Sync (WIP)</button>
+        <div style="font-size:10px;color:#888;margin-top:3px;min-height:12px;"></div>
       </div>
     </div>`;
   }
