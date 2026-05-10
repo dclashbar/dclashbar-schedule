@@ -25,6 +25,69 @@ const STAFF = {
 
 const LOGO_URL = 'https://images.squarespace-cdn.com/content/v1/572ba1b72fe13138bc8e1fe9/92764f7d-c61c-4ef2-89f9-f0bf8444215a/Transparent+Logo+%282%29.png';
 
+// Booker product variant IDs for inventory sync.
+// Each "product" maps to all the step variants that make up its kit — when the
+// manager records "Profusion ended at 5", we set BackbarInventory=5 on BOTH
+// Profusion step 1 and step 2 (since they're consumed as a pair).
+const INVENTORY_PRODUCTS = {
+  'One Shot': [
+    { label: 'One Shot step 1', productId: 12627635, variantId: 18568173 },
+    { label: 'One Shot step 2', productId: 12623182, variantId: 18553876 },
+  ],
+  'Profusion': [
+    { label: 'Profusion 1',     productId: 12621612, variantId: 18550376 },
+    { label: 'Profusion 2',     productId: 12623179, variantId: 18553873 },
+  ],
+  'BBL': [
+    { label: 'BBL step 1',      productId: 12623185, variantId: 18553879 },
+    { label: 'BBL step 2',      productId: 12627564, variantId: 18567902 },
+    { label: 'BBL step 3',      productId: 12623186, variantId: 18553880 },
+  ],
+};
+
+async function getBookerToken() {
+  const res = await fetch(`${process.env.BOOKER_AUTH_BASE}/v5/auth/connect/token`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Ocp-Apim-Subscription-Key': process.env.BOOKER_MERCHANT_API_KEY,
+    },
+    body: new URLSearchParams({
+      grant_type: 'personal_access_token',
+      client_id: process.env.BOOKER_CLIENT_ID,
+      client_secret: process.env.BOOKER_CLIENT_SECRET,
+      scope: 'merchant',
+      personal_access_token: process.env.BOOKER_PAT,
+    }),
+  });
+  if (!res.ok) throw new Error(`Booker token failed: ${res.status}`);
+  return (await res.json()).access_token;
+}
+
+async function setBackbarInventory(token, productId, variantId, count) {
+  const url = `${process.env.BOOKER_API_BASE}/v4.1/merchant/product/${productId}/update?access_token=${encodeURIComponent(token)}`;
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      'Ocp-Apim-Subscription-Key': process.env.BOOKER_MERCHANT_API_KEY,
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      access_token: token,
+      ID: productId,
+      Product: {
+        ID: productId,
+        ProductVariantsToUpdate: [{ ID: variantId, BackbarInventory: count }],
+      },
+    }),
+  });
+  const text = await res.text();
+  let j; try { j = JSON.parse(text); } catch { return { ok: false, message: text.slice(0, 200) }; }
+  return { ok: j.IsSuccess === true, message: j.ErrorMessage || j.DetailedErrorMessage };
+}
+
 // Check if a client has submitted an intake form
 function hasIntakeForm(customerName) {
   const intakeDir = path.join(__dirname, 'intakes');
@@ -595,7 +658,7 @@ function renderManagerSummary() {
       t.half ? `${t.half} ½` : '',
       t.newGuest ? `${t.newGuest} NEW guest` : '',
     ].filter(Boolean).join(', ');
-    balanceRows += `<div style="display:grid;grid-template-columns:1fr auto auto auto;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid #eee;">
+    balanceRows += `<div style="display:grid;grid-template-columns:1fr auto auto auto auto;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid #eee;">
       <div>
         <div style="font-size:13px;font-weight:700;color:${color};">${product}</div>
         <div style="font-size:11px;color:#888;">${summary} → recommend ${recommended} packet${recommended === 1 ? '' : 's'}</div>
@@ -612,6 +675,10 @@ function renderManagerSummary() {
         Δ<br>
         <span data-balance-delta="${product}" style="font-size:14px;font-weight:600;color:#555;">—</span>
       </div>
+      <div style="text-align:right;">
+        <button data-sync-product="${product}" style="padding:6px 10px;background:${color};color:white;border:none;border-radius:4px;font-size:12px;cursor:pointer;font-weight:600;" title="Set Booker BackbarInventory to the Ending value">🔄 Sync</button>
+        <div data-sync-status="${product}" style="font-size:10px;color:#888;margin-top:3px;min-height:12px;"></div>
+      </div>
     </div>`;
   }
   const balanceSection = balanceRows ? `
@@ -622,7 +689,7 @@ function renderManagerSummary() {
     <div style="font-size:11px;color:#888;margin-top:6px;font-style:italic;">Autosaves to this device for today.</div>
   ` : '';
 
-  // Inline JS for localStorage autosave + delta calculation
+  // Inline JS for localStorage autosave + delta calculation + Booker sync
   const balanceScript = `<script>(function(){
     var today = "${appointmentsData.date}";
     var key = "dclb-balance-" + today;
@@ -648,6 +715,39 @@ function renderManagerSummary() {
       });
     }
     recalc();
+    // Booker inventory sync
+    document.querySelectorAll("[data-sync-product]").forEach(function(btn){
+      btn.addEventListener("click", async function(){
+        var product = btn.getAttribute("data-sync-product");
+        var endingInput = document.querySelector('[data-balance-key="' + product + '-end"]');
+        var ending = endingInput && endingInput.value;
+        var status = document.querySelector('[data-sync-status="' + product + '"]');
+        if (ending === "" || ending == null) {
+          status.textContent = "Enter ending first";
+          status.style.color = "#e74c3c";
+          return;
+        }
+        if (!confirm("Update Booker inventory: " + product + " → " + ending + "?")) return;
+        status.textContent = "Syncing…";
+        status.style.color = "#888";
+        btn.disabled = true;
+        try {
+          var fd = new FormData();
+          fd.append("product", product);
+          fd.append("ending", ending);
+          var r = await fetch("/sync-inventory", { method: "POST", body: fd });
+          var j = await r.json();
+          if (j.ok) {
+            status.textContent = "✓ Synced " + j.results.length + " variant" + (j.results.length === 1 ? "" : "s");
+            status.style.color = "#27ae60";
+          } else {
+            status.textContent = "⚠ " + (j.error || (j.results || []).filter(function(x){return !x.ok}).map(function(x){return x.label + ": " + x.message}).join("; ") || "Failed");
+            status.style.color = "#e74c3c";
+          }
+        } catch (err) { status.textContent = "⚠ " + err.message; status.style.color = "#e74c3c"; }
+        finally { btn.disabled = false; }
+      });
+    });
   })();</script>`;
 
   return `<div style="background:#fff8e1;border:1px solid #ffc107;border-radius:8px;padding:14px 18px;margin-bottom:18px;">
@@ -902,6 +1002,36 @@ const server = http.createServer(async (req, res) => {
     if (!isAuthenticated(req)) {
       res.writeHead(200, { 'Content-Type': 'text/html' });
       res.end(renderLoginPage(false));
+      return;
+    }
+
+    // Sync inventory to Booker (one click per product on the manager view)
+    if (reqPath === '/sync-inventory' && req.method === 'POST') {
+      const body = await parseFormData(req);
+      const product = body.product;
+      const ending = parseInt(body.ending, 10);
+      const variants = INVENTORY_PRODUCTS[product];
+      if (!variants || isNaN(ending) || ending < 0) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: false, error: 'invalid product or ending balance' }));
+        return;
+      }
+      try {
+        const token = await getBookerToken();
+        const results = [];
+        for (const v of variants) {
+          const r = await setBackbarInventory(token, v.productId, v.variantId, ending);
+          results.push({ label: v.label, ok: r.ok, message: r.message });
+        }
+        const allOk = results.every(r => r.ok);
+        console.log(`Inventory sync: ${product} → ${ending}  (${results.filter(r=>r.ok).length}/${results.length} variants ok)`);
+        res.writeHead(allOk ? 200 : 207, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: allOk, results }));
+      } catch (err) {
+        console.error('Inventory sync error:', err.message);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: false, error: err.message }));
+      }
       return;
     }
 
