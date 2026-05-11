@@ -1,5 +1,45 @@
 {
-  "date": "2026-05-09",
-  "processedAt": "2026-05-09T18:53:07.373Z",
-  "actions": []
+  "date": "2026-05-11",
+  "processedAt": "2026-05-11T10:58:27.068Z",
+  "actions": [
+    {
+      "type": "reschedule",
+      "threadId": "19e1311146ceaf4d",
+      "subject": "Re: Confirm your upcoming visit to DC Lash Bar, Tanya Good (100810003297)",
+      "from": "Tanya Good <goodtanya1@gmail.com>",
+      "date": "Sun, 10 May 2026 14:05:33 -0400",
+      "customerName": "Tanya Good",
+      "phone": "",
+      "customerEmail": "emails@secure-booker.com",
+      "voicemailMessage": "",
+      "customerMessage": "",
+      "actionNeeded": "Check if new time was requested. RESCHEDULE or MOVE TO CLIPBOARD in Booker. (Stage 2: will be automated)"
+    },
+    {
+      "type": "cancellation",
+      "threadId": "19e13a4f4f6aca73",
+      "subject": "Re: Your DC Lash Bar Experience Is Booked Abbey Meller (100812457007)",
+      "from": "Abbey Meller <abbeymeller@gmail.com>",
+      "date": "Sun, 10 May 2026 16:29:29 -0400",
+      "customerName": "",
+      "phone": "",
+      "customerEmail": "abbeymeller@gmail.com",
+      "voicemailMessage": "",
+      "customerMessage": "",
+      "actionNeeded": "CANCEL appointment in Booker. (Stage 2: will be automated)"
+    },
+    {
+      "type": "reschedule",
+      "threadId": "19e0d6506a0cae14",
+      "subject": "Re: GT EOD 5/9",
+      "from": "Stephanie Nguyen <stephanie@dclashbar.com>",
+      "date": "Sun, 10 May 2026 10:19:21 -0400",
+      "customerName": "",
+      "phone": "202-864-6930",
+      "customerEmail": "",
+      "voicemailMessage": "",
+      "customerMessage": "",
+      "actionNeeded": "Check if new time was requested. RESCHEDULE or MOVE TO CLIPBOARD in Booker. (Stage 2: will be automated)"
+    }
+  ]
 }
