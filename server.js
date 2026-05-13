@@ -136,6 +136,22 @@ function loadAppointmentsData() {
   }
 }
 
+// Late-chase log lives at ~/booker-reports/data/late-chase-log.json and is
+// updated every 5 min by late-guest-chaser.js. Read fresh on each render so
+// the dashboard reflects the latest state without restarts.
+function loadChaseLog() {
+  const candidates = [
+    path.join(__dirname, '..', 'data', 'late-chase-log.json'),
+    path.join(__dirname, 'data', 'late-chase-log.json'),
+  ];
+  for (const p of candidates) {
+    if (fs.existsSync(p)) {
+      try { return JSON.parse(fs.readFileSync(p, 'utf-8')); } catch { return {}; }
+    }
+  }
+  return {};
+}
+
 function getStaffAppointments(staffName) {
   if (!appointmentsData || !appointmentsData.staff) return [];
   return appointmentsData.staff[staffName] || [];
@@ -191,6 +207,7 @@ function formatDate(dateStr) {
 
 function renderSchedulePage(staffName, appointments, date) {
   const today = formatDate(date);
+  const chaseLog = loadChaseLog();
 
   let appointmentRows = '';
   if (appointments.length === 0) {
@@ -230,6 +247,16 @@ function renderSchedulePage(staffName, appointments, date) {
               };
               const color = colors[s] || '#888';
               return ` <span style="background:${color};color:white;padding:1px 6px;border-radius:8px;font-size:11px;">${s}</span>`;
+            })()}${(() => {
+              const chase = chaseLog[appt.appointmentId];
+              if (!chase) return '';
+              const t = new Date(chase.sentAt);
+              const hh = t.getHours();
+              const mm = String(t.getMinutes()).padStart(2, '0');
+              const ampm = hh >= 12 ? 'pm' : 'am';
+              const h12 = hh === 0 ? 12 : hh > 12 ? hh - 12 : hh;
+              const dryTag = chase.dryRun ? ' (dry-run)' : '';
+              return ` <span title="Late-guest chase sent${dryTag} at ${h12}:${mm}${ampm}" style="background:#e67e22;color:white;padding:1px 6px;border-radius:8px;font-size:11px;">⏱ chased ${h12}:${mm}${ampm}${chase.dryRun ? '*' : ''}</span>`;
             })()}
             ${appt.customerId ? ` <a href="https://app.secure-booker.com/App/SpaAdmin/Customers/EditCustomer/EditPhotos.aspx?CustomerID=${appt.customerId}" target="_blank" rel="noopener" title="Manage photos in Booker" style="text-decoration:none;font-size:14px;margin-left:4px;" class="no-print">📷</a>` : ''}
             ${(appt.photos && appt.photos.length) ? `
