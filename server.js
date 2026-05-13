@@ -256,7 +256,7 @@ function renderSchedulePage(staffName, appointments, date) {
               const ampm = hh >= 12 ? 'pm' : 'am';
               const h12 = hh === 0 ? 12 : hh > 12 ? hh - 12 : hh;
               const dryTag = chase.dryRun ? ' (dry-run)' : '';
-              return ` <span title="Late-guest message sent${dryTag} at ${h12}:${mm}${ampm}" style="background:#e67e22;color:white;padding:1px 6px;border-radius:8px;font-size:11px;">⏱ messaged ${h12}:${mm}${ampm}${chase.dryRun ? '*' : ''}</span>`;
+              return ` <span title="Late-guest message sent${dryTag} at ${h12}:${mm}${ampm}" style="background:#e67e22;color:white;padding:1px 6px;border-radius:8px;font-size:11px;">messaged ${h12}:${mm}${ampm}${chase.dryRun ? '*' : ''}</span>`;
             })()}
             ${appt.customerId ? ` <a href="https://app.secure-booker.com/App/SpaAdmin/Customers/EditCustomer/EditPhotos.aspx?CustomerID=${appt.customerId}" target="_blank" rel="noopener" title="Manage photos in Booker" style="text-decoration:none;font-size:14px;margin-left:4px;" class="no-print">📷</a>` : ''}
             ${(appt.photos && appt.photos.length) ? `
