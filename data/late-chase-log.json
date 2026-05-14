@@ -25,5 +25,23 @@
     "service": "Lash Lift Consultation",
     "artist": "Emily Abramson",
     "lateBy": 116
+  },
+  "812955372": {
+    "sentAt": "2026-05-14T19:05:04.978Z",
+    "dryRun": false,
+    "phone": "2029134468",
+    "name": "Erica",
+    "service": "Brow Wax",
+    "artist": "Emily Abramson",
+    "lateBy": 5
+  },
+  "812955405": {
+    "sentAt": "2026-05-14T19:05:04.978Z",
+    "dryRun": false,
+    "phone": "2023725881",
+    "name": "Grayson",
+    "service": "Brow Map & Shape by Wax",
+    "artist": "Shauntice Skye",
+    "lateBy": 5
   }
 }
