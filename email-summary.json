@@ -1,5 +1,19 @@
 {
-  "date": "2026-05-13",
-  "processedAt": "2026-05-13T21:58:51.446Z",
-  "actions": []
+  "date": "2026-05-14",
+  "processedAt": "2026-05-14T11:12:31.242Z",
+  "actions": [
+    {
+      "type": "reschedule",
+      "threadId": "19e25c943e4964f8",
+      "subject": "Cancellation of appointment",
+      "from": "\"Ditte Søndergaard Aggebo\" <ditteaggebo@gmail.com>",
+      "date": "Thu, 14 May 2026 05:19:54 -0400",
+      "customerName": "",
+      "phone": "",
+      "customerEmail": "",
+      "voicemailMessage": "",
+      "customerMessage": "",
+      "actionNeeded": "Check if new time was requested. RESCHEDULE or MOVE TO CLIPBOARD in Booker. (Stage 2: will be automated)"
+    }
+  ]
 }
