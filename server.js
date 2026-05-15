@@ -230,7 +230,7 @@ function renderSchedulePage(staffName, appointments, date) {
           </td>
           <td style="padding:12px 15px; border-bottom:1px solid #eee; max-width:220px; word-wrap:break-word; overflow-wrap:anywhere;">
             ${appt.serviceName || ''}
-            ${appt.serviceMismatch ? `<div style="margin-top:4px;font-size:11px;color:#c0392b;background:#fdecea;border:1px solid #f5b7b1;border-radius:6px;padding:2px 6px;display:inline-block;" title="${appt.serviceMismatch.reason}">⚠ likely <strong>${appt.serviceMismatch.suggestion}</strong></div>` : ''}
+            ${appt.serviceMismatch ? `<div style="margin-top:4px;font-size:11px;color:#c0392b;background:#fdecea;border:1px solid #f5b7b1;border-radius:6px;padding:2px 6px;display:inline-block;" title="${appt.serviceMismatch.reason}">likely <strong>${appt.serviceMismatch.suggestion}</strong></div>` : ''}
           </td>
           <td style="padding:12px 15px; border-bottom:1px solid #eee;">
             ${appt.customerFirstName || appt.customerName || ''}${appt.firstAppointment ? ' <span style="background:#e67e22;color:white;padding:1px 6px;border-radius:8px;font-size:11px;">NEW</span>' : ''}${(() => {
