@@ -787,8 +787,7 @@ function renderManagerSummary() {
     </div>
     <div style="background:white;border:1px solid #eee;border-radius:6px;padding:8px 12px;">${breakdownRows}</div>
 
-    ${balanceSection}
-  </div>${balanceScript}`;
+  </div>`;
 }
 
 function renderEmailSummary() {
