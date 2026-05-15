@@ -787,13 +787,6 @@ function renderManagerSummary() {
     </div>
     <div style="background:white;border:1px solid #eee;border-radius:6px;padding:8px 12px;">${breakdownRows}</div>
 
-    ${distPlanSections ? `
-      <div style="font-size:11px;color:#7d4f10;text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-top:18px;margin-bottom:6px;">
-        Distribution plan (1 full packet = 2 services, ½-packet items pair with each other)
-      </div>
-      <div style="background:white;border:1px solid #eee;border-radius:6px;padding:8px 12px;">${distPlanSections}</div>
-    ` : ''}
-
     ${balanceSection}
   </div>${balanceScript}`;
 }
